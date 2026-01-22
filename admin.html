@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Administração - Gestão Diário Oficial</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <span class="navbar-brand fw-bold">Gestão Diário Oficial - Administração</span>
+        <div class="d-flex align-items-center gap-3">
+          <span class="text-white" id="nomeUsuarioAdmin"></span>
+          <button id="btnLimparDados" class="btn btn-outline-warning btn-sm" title="Limpar todos os dados (apenas para testes)">🗑️ Limpar Dados</button>
+          <button id="btnLogoutAdmin" class="btn btn-outline-light btn-sm">Sair</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="d-flex">
+      <!-- Menu Lateral -->
+      <div class="sidebar bg-white border-end" style="width: 250px; min-height: calc(100vh - 56px); position: sticky; top: 56px;">
+        <div class="p-3">
+          <h6 class="text-muted text-uppercase small mb-3">Menu</h6>
+          <ul class="nav nav-pills flex-column">
+            <li class="nav-item">
+              <a class="nav-link active" href="#" id="menu-dashboards">
+                <i class="bi bi-speedometer2"></i> Dashboards
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="menu-poupatempos">
+                <i class="bi bi-building"></i> Poupatempos
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="menu-financeiro">
+                <i class="bi bi-cash-coin"></i> Resultado Financeiro
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="menu-relatorios">
+                <i class="bi bi-bar-chart"></i> Relatórios
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="menu-parceiros">
+                <i class="bi bi-people"></i> Parceiros
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="menu-fechamentos">
+                <i class="bi bi-check-circle"></i> Fechamentos
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="menu-mensagens">
+                <i class="bi bi-envelope"></i> Mensagens <span class="badge bg-danger ms-1" id="badgeMensagensNaoLidasAdmin" style="display: none;">0</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Conteúdo Principal -->
+      <main class="flex-grow-1 p-4" style="min-height: calc(100vh - 56px);">
+      <!-- Seção Dashboards -->
+      <div id="secao-dashboards">
+        <h2 class="h4 mb-4">Dashboard</h2>
+        
+        <div class="row g-4">
+          <!-- Card Resumo Poupatempos -->
+          <div class="col-12 col-md-4">
+            <div class="card shadow-sm border-primary">
+              <div class="card-body text-center">
+                <i class="bi bi-building fs-1 text-primary mb-2"></i>
+                <h3 class="h2 mb-0" id="totalPoupatempos">0</h3>
+                <p class="text-muted mb-0">Poupatempos Cadastrados</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Resumo Parceiros -->
+          <div class="col-12 col-md-4">
+            <div class="card shadow-sm border-info">
+              <div class="card-body text-center">
+                <i class="bi bi-people fs-1 text-info mb-2"></i>
+                <h3 class="h2 mb-0" id="totalParceiros">0</h3>
+                <p class="text-muted mb-0">Parceiros Cadastrados</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Fechamentos Pendentes -->
+          <div class="col-12 col-md-4">
+            <div class="card shadow-sm border-warning">
+              <div class="card-body text-center">
+                <i class="bi bi-check-circle fs-1 text-warning mb-2"></i>
+                <h3 class="h2 mb-0" id="totalFechamentosPendentes">0</h3>
+                <p class="text-muted mb-0">Fechamentos Pendentes</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Registros com Atraso -->
+        <div class="row g-4 mt-2">
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm" id="cardRegistrosAtraso" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+              <div class="card-header bg-white">
+                <h3 class="h6 mb-0">Registros com Atraso</h3>
+              </div>
+              <div class="card-body">
+                <h2 class="h3 mb-0 text-danger" id="totalRegistrosAtraso">0</h2>
+                <p class="text-muted small mb-0">Registros com mais de 3 dias de diferença ou sem data de recebimento</p>
+                <small class="text-primary">Clique para ver detalhes</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resultado Financeiro -->
+        <div class="row g-4 mt-2">
+          <div class="col-12">
+            <div class="card shadow-sm border-primary">
+              <div class="card-header bg-white">
+                <h3 class="h5 mb-0"><i class="bi bi-graph-up-arrow text-primary"></i> Resultado Financeiro</h3>
+              </div>
+              <div class="card-body">
+                <div class="row g-4">
+                  <!-- Custo Operacional -->
+                  <div class="col-12 col-md-4">
+                    <div class="text-center p-3 bg-light rounded">
+                      <h6 class="text-muted mb-2">Custo Operacional</h6>
+                      <h3 class="h4 mb-0 text-danger" id="dashboardCustoOperacional">R$ 0,00</h3>
+                      <small class="text-muted">Fechamentos aprovados</small>
+                    </div>
+                  </div>
+                  
+                  <!-- Investimento Total -->
+                  <div class="col-12 col-md-4">
+                    <div class="text-center p-3 bg-light rounded">
+                      <h6 class="text-muted mb-2">Investimento Total</h6>
+                      <h3 class="h4 mb-0 text-info" id="dashboardInvestimento">R$ 0,00</h3>
+                      <small class="text-muted">Total investido</small>
+                    </div>
+                  </div>
+                  
+                  <!-- Receita -->
+                  <div class="col-12 col-md-4">
+                    <div class="text-center p-3 bg-light rounded">
+                      <h6 class="text-muted mb-2">Receita</h6>
+                      <h3 class="h4 mb-0 text-success" id="dashboardReceita">R$ 0,00</h3>
+                      <small class="text-muted">Total de receitas</small>
+                    </div>
+                  </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <!-- Comparações -->
+                <div class="row g-4">
+                  <!-- Investimento - Custo Operacional -->
+                  <div class="col-12 col-md-6">
+                    <div class="p-3 rounded" id="cardInvestimentoRestante" style="background-color: #f8f9fa;">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0 fw-semibold">Investimento Restante</h6>
+                        <i class="bi bi-calculator text-primary"></i>
+                      </div>
+                      <p class="text-muted small mb-2">Investimento - Custo Operacional</p>
+                      <h3 class="h4 mb-0" id="dashboardInvestimentoRestante">R$ 0,00</h3>
+                      <div id="statusInvestimentoRestante" class="mt-2"></div>
+                    </div>
+                  </div>
+                  
+                  <!-- Receita - Investimento -->
+                  <div class="col-12 col-md-6">
+                    <div class="p-3 rounded" id="cardReceitaInvestimento" style="background-color: #f8f9fa;">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0 fw-semibold">Cobertura do Investimento</h6>
+                        <i class="bi bi-shield-check text-success"></i>
+                      </div>
+                      <p class="text-muted small mb-2">Receita - Investimento</p>
+                      <h3 class="h4 mb-0" id="dashboardCoberturaInvestimento">R$ 0,00</h3>
+                      <div id="statusCoberturaInvestimento" class="mt-2"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comparativo de Faturamento (Ano Anterior vs Ano Atual) -->
+        <div class="row g-4 mt-2">
+          <div class="col-12">
+            <div class="card shadow-sm border-primary">
+              <div class="card-header bg-white">
+                <h3 class="h5 mb-0"><i class="bi bi-graph-up-arrow text-primary"></i> Comparativo de Faturamento</h3>
+              </div>
+              <div class="card-body">
+                <div class="row g-4">
+                  <div class="col-12 col-md-4">
+                    <div class="text-center p-3 bg-light rounded">
+                      <h6 class="text-muted mb-2">Faturamento ano anterior</h6>
+                      <h3 class="h4 mb-0" id="dashboardFaturamentoAnoAnterior">—</h3>
+                      <small class="text-muted" id="dashboardLabelAnoAnterior">(cadastre em Resultado Financeiro)</small>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <div class="text-center p-3 bg-light rounded">
+                      <h6 class="text-muted mb-2">Faturamento ano atual</h6>
+                      <h3 class="h4 mb-0 text-success" id="dashboardFaturamentoAnoAtual">R$ 0,00</h3>
+                      <small class="text-muted" id="dashboardLabelAnoAtual">Receitas do ano</small>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <div class="text-center p-3 rounded" id="cardVariacaoFaturamento" style="background-color: #f8f9fa;">
+                      <h6 class="text-muted mb-2">Variação</h6>
+                      <h3 class="h4 mb-0" id="dashboardVariacaoFaturamento">—</h3>
+                      <div id="dashboardVariacaoPercentual" class="mt-1"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custo Operacional e Receita (mantido para compatibilidade) -->
+        <div class="row g-4 mt-2">
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white">
+                <h3 class="h6 mb-0">Custo Operacional</h3>
+              </div>
+              <div class="card-body">
+                <h2 class="h3 mb-0 text-success" id="totalFaturamento">R$ 0,00</h2>
+                <p class="text-muted small mb-0">Total de fechamentos aprovados</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white">
+                <h3 class="h6 mb-0">Receita</h3>
+              </div>
+              <div class="card-body">
+                <h2 class="h3 mb-0 text-primary" id="totalReceita">R$ 0,00</h2>
+                <p class="text-muted small mb-0">Total de receitas cadastradas</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de Poupatempos com Média de Dias -->
+        <div class="row g-4 mt-2">
+          <div class="col-12">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h3 class="h6 mb-0">Lista de Poupatempos</h3>
+                <button id="exportarPoupatemposDashboard" class="btn btn-outline-secondary btn-sm">Exportar CSV</button>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped align-middle" id="tabelaPoupatemposDashboard">
+                    <thead>
+                      <tr>
+                        <th>Poupatempo</th>
+                        <th>Endereço</th>
+                        <th class="text-end">Quantidade Esperada</th>
+                        <th class="text-end">Total Recebido</th>
+                        <th class="text-end">Média de Dias</th>
+                        <th class="text-end">Registros</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+                <p class="text-muted small mb-0 mt-3" id="resumoPoupatemposDashboard">Nenhum poupatempo cadastrado.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção Poupatempos -->
+      <div id="secao-poupatempos" style="display: none;">
+      <ul class="nav nav-tabs mb-4" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="tab-cadastro" data-bs-toggle="tab" data-bs-target="#painel-cadastro" type="button" role="tab">
+            Cadastrar Poupatempo
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-lista" data-bs-toggle="tab" data-bs-target="#painel-lista" type="button" role="tab">
+            Listar Poupatempos
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-registros" data-bs-toggle="tab" data-bs-target="#painel-registros" type="button" role="tab">
+            Ver Registros de Recebimento
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+        <!-- Painel Cadastro -->
+        <div class="tab-pane fade show active" id="painel-cadastro" role="tabpanel">
+          <div class="card shadow-sm">
+            <div class="card-header bg-white">
+              <h2 class="h5 mb-0" id="tituloFormulario">Cadastrar Novo Poupatempo</h2>
+            </div>
+            <div class="card-body">
+              <form id="cadastroPoupatempoForm" class="vstack gap-3">
+                <input type="hidden" id="poupatempoIdEdicao" value="" />
+                <div class="row">
+                  <div class="col-12 col-md-6">
+                    <label for="nomePoupatempo" class="form-label fw-semibold">Nome do Poupatempo *</label>
+                    <input type="text" id="nomePoupatempo" class="form-control" required placeholder="Ex: Sé, Santo Amaro, etc." />
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label for="cepPoupatempo" class="form-label fw-semibold">CEP</label>
+                    <input type="text" id="cepPoupatempo" class="form-control" placeholder="00000-000" maxlength="9" />
+                    <small class="text-muted">Digite o CEP para buscar o endereço automaticamente</small>
+                  </div>
+                  <div class="col-12 col-md-3 d-flex align-items-end">
+                    <button type="button" id="btnBuscarCep" class="btn btn-outline-secondary w-100">Buscar CEP</button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-12">
+                    <label for="enderecoPoupatempo" class="form-label fw-semibold">Endereço *</label>
+                    <input type="text" id="enderecoPoupatempo" class="form-control" required placeholder="Endereço completo (será preenchido automaticamente ao buscar CEP)" />
+                    <div id="mensagemCep" class="mt-2"></div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-12 col-md-6">
+                    <label for="telefonePoupatempo" class="form-label fw-semibold">Telefone</label>
+                    <input type="text" id="telefonePoupatempo" class="form-control" placeholder="(00) 00000-0000" maxlength="15" />
+                  </div>
+                </div>
+                <!-- Seção Responsáveis pelo Poupatempo -->
+                <div class="border rounded p-3 bg-light">
+                  <h6 class="fw-bold mb-3">Responsáveis pelo Poupatempo</h6>
+                  
+                  <!-- Gerente -->
+                  <div class="mb-3">
+                    <h6 class="text-primary mb-2">Gerente da Unidade</h6>
+                    <div class="row">
+                      <div class="col-12 col-md-4 mb-2">
+                        <label for="gerenteNome" class="form-label fw-semibold">Nome do Gerente *</label>
+                        <input type="text" id="gerenteNome" class="form-control" required placeholder="Nome completo do gerente" />
+                      </div>
+                      <div class="col-12 col-md-4 mb-2">
+                        <label for="gerenteEmail" class="form-label fw-semibold">E-mail do Gerente *</label>
+                        <input type="email" id="gerenteEmail" class="form-control" required placeholder="gerente@exemplo.com" />
+                      </div>
+                      <div class="col-12 col-md-4 mb-2">
+                        <label for="gerenteSenha" class="form-label fw-semibold">Senha do Gerente *</label>
+                        <input type="password" id="gerenteSenha" class="form-control" required placeholder="Defina a senha de acesso" />
+                        <small class="text-muted">Senha para login do gerente</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Coordenador -->
+                  <div class="mb-3">
+                    <h6 class="text-primary mb-2">Coordenador</h6>
+                    <div class="row">
+                      <div class="col-12 col-md-4 mb-2">
+                        <label for="coordenadorNome" class="form-label fw-semibold">Nome do Coordenador *</label>
+                        <input type="text" id="coordenadorNome" class="form-control" required placeholder="Nome completo do coordenador" />
+                      </div>
+                      <div class="col-12 col-md-4 mb-2">
+                        <label for="coordenadorEmail" class="form-label fw-semibold">E-mail do Coordenador *</label>
+                        <input type="email" id="coordenadorEmail" class="form-control" required placeholder="coordenador@exemplo.com" />
+                      </div>
+                      <div class="col-12 col-md-4 mb-2">
+                        <label for="coordenadorSenha" class="form-label fw-semibold">Senha do Coordenador *</label>
+                        <input type="password" id="coordenadorSenha" class="form-control" required placeholder="Defina a senha de acesso" />
+                        <small class="text-muted">Senha para login do coordenador</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Quantidade -->
+                  <div class="row">
+                    <div class="col-12 col-md-6">
+                      <label for="quantidadeEsperada" class="form-label fw-semibold">Quantidade a ser recebida *</label>
+                      <input type="number" id="quantidadeEsperada" class="form-control" min="1" step="1" required placeholder="Quantidade padrão" />
+                      <small class="text-muted">Quantidade padrão de jornais que este Poupatempo deve receber</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary" id="btnSalvarPoupatempo">Salvar Poupatempo</button>
+                  <button type="button" class="btn btn-outline-secondary d-none" id="btnCancelarEdicao">Cancelar Edição</button>
+                </div>
+                <div id="mensagemCadastro" class="alert d-none" role="alert"></div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painel Lista -->
+        <div class="tab-pane fade" id="painel-lista" role="tabpanel">
+          <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+              <h2 class="h5 mb-0">Poupatempos Cadastrados</h2>
+              <button id="exportarPoupatempos" class="btn btn-outline-secondary btn-sm">Exportar CSV</button>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle" id="tabelaPoupatempos">
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>CEP</th>
+                      <th>Endereço</th>
+                      <th>Gerente</th>
+                      <th class="text-end">Qtd. Esperada</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <p class="text-muted small mb-0 mt-3" id="resumoPoupatempos">Nenhum Poupatempo cadastrado.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painel Registros -->
+        <div class="tab-pane fade" id="painel-registros" role="tabpanel">
+          <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white">
+              <h2 class="h6 mb-0">Filtros</h2>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-4">
+                  <label for="filtroPoupatempoAdmin" class="form-label fw-semibold">Poupatempo</label>
+                  <select id="filtroPoupatempoAdmin" class="form-select">
+                    <option value="">Todos</option>
+                  </select>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label for="filtroDataEdicaoAdmin" class="form-label fw-semibold">Data da edição</label>
+                  <input type="date" id="filtroDataEdicaoAdmin" class="form-control" />
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end gap-2">
+                  <button id="aplicarFiltrosAdmin" class="btn btn-outline-primary w-100">Aplicar</button>
+                  <button id="limparFiltrosAdmin" class="btn btn-outline-secondary">Limpar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex flex-wrap gap-2 align-items-center justify-content-between">
+              <h2 class="h5 mb-0">Registros de Recebimento</h2>
+              <div class="d-flex flex-wrap gap-2">
+                <button id="exportarCsvAdmin" class="btn btn-outline-secondary btn-sm">Exportar CSV</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle" id="tabelaRegistrosAdmin">
+                  <thead>
+                    <tr>
+                      <th>Poupatempo</th>
+                      <th>Data edição</th>
+                      <th>Data recebimento</th>
+                      <th class="text-end">Qtd de Dias</th>
+                      <th class="text-end">Quantidade</th>
+                      <th>Observações</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <p class="text-muted small mb-0" id="resumoRegistrosAdmin">Nenhum registro cadastrado.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Seção Resultado Financeiro -->
+      <div id="secao-financeiro" style="display: none;">
+        <h2 class="h4 mb-4">Resultado Financeiro</h2>
+        
+        <div class="row g-4">
+          <!-- Formulário de Investimento -->
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white">
+                <h3 class="h5 mb-0">Cadastrar Investimento</h3>
+              </div>
+              <div class="card-body">
+                <form id="formInvestimento" class="vstack gap-3">
+                  <div>
+                    <label for="anoInvestimento" class="form-label fw-semibold">Ano *</label>
+                    <input type="number" id="anoInvestimento" class="form-control" required min="2020" max="2100" placeholder="Ex: 2026" />
+                  </div>
+                  <div>
+                    <label for="investimentoOperacional" class="form-label fw-semibold">Investimento Operacional (R$) *</label>
+                    <input type="number" id="investimentoOperacional" class="form-control" required min="0" step="0.01" placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label for="investimentoImpressao" class="form-label fw-semibold">Investimento em Impressão (R$) *</label>
+                    <input type="number" id="investimentoImpressao" class="form-control" required min="0" step="0.01" placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label for="investimentoDistribuicao" class="form-label fw-semibold">Investimento em Distribuição (R$) *</label>
+                    <input type="number" id="investimentoDistribuicao" class="form-control" required min="0" step="0.01" placeholder="0.00" />
+                  </div>
+                  <button type="submit" class="btn btn-primary">Salvar Investimento</button>
+                  <div id="mensagemInvestimento" class="alert d-none" role="alert"></div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulário de Receita -->
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white">
+                <h3 class="h5 mb-0">Cadastrar Receita</h3>
+              </div>
+              <div class="card-body">
+                <form id="formReceita" class="vstack gap-3">
+                  <div>
+                    <label for="dataReceita" class="form-label fw-semibold">Data *</label>
+                    <input type="date" id="dataReceita" class="form-control" required />
+                  </div>
+                  <div>
+                    <label for="faturamentoReceita" class="form-label fw-semibold">Faturamento (R$) *</label>
+                    <input type="number" id="faturamentoReceita" class="form-control" required min="0" step="0.01" placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label for="totalPedidosReceita" class="form-label fw-semibold">Total de Pedidos *</label>
+                    <input type="number" id="totalPedidosReceita" class="form-control" required min="0" step="1" placeholder="0" />
+                  </div>
+                  <button type="submit" class="btn btn-primary">Salvar Receita</button>
+                  <div id="mensagemReceita" class="alert d-none" role="alert"></div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabelas de Visualização -->
+        <div class="row g-4 mt-2">
+          <!-- Tabela de Investimentos -->
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h3 class="h6 mb-0">Investimentos Cadastrados</h3>
+                <button id="exportarInvestimentos" class="btn btn-outline-secondary btn-sm">Exportar CSV</button>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped align-middle" id="tabelaInvestimentos">
+                    <thead>
+                      <tr>
+                        <th>Ano</th>
+                        <th class="text-end">Operacional</th>
+                        <th class="text-end">Impressão</th>
+                        <th class="text-end">Distribuição</th>
+                        <th class="text-end">Total</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela de Receitas -->
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h3 class="h6 mb-0">Receitas Cadastradas</h3>
+                <button id="exportarReceitas" class="btn btn-outline-secondary btn-sm">Exportar CSV</button>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped align-middle" id="tabelaReceitas">
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th class="text-end">Faturamento</th>
+                        <th class="text-end">Total Pedidos</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Faturamento por Ano (Referência para comparativo no Dashboard) -->
+        <div class="row g-4 mt-2">
+          <div class="col-12">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white">
+                <h3 class="h6 mb-0">Faturamento Total por Ano (Referência)</h3>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">Cadastre o faturamento total de anos anteriores para o comparativo no Dashboard (ano anterior vs ano atual).</p>
+                <div class="row g-3 mb-3">
+                  <div class="col-12 col-md-3">
+                    <label for="anoFaturamentoAnual" class="form-label fw-semibold">Ano *</label>
+                    <input type="number" id="anoFaturamentoAnual" class="form-control" required min="2000" max="2100" placeholder="Ex: 2024" />
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label for="valorFaturamentoAnual" class="form-label fw-semibold">Faturamento Total (R$) *</label>
+                    <input type="number" id="valorFaturamentoAnual" class="form-control" required min="0" step="0.01" placeholder="0,00" />
+                  </div>
+                  <div class="col-12 col-md-3 d-flex align-items-end">
+                    <button type="button" id="btnSalvarFaturamentoAnual" class="btn btn-primary">Salvar</button>
+                  </div>
+                </div>
+                <div id="mensagemFaturamentoAnual" class="alert d-none mb-3" role="alert"></div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped align-middle" id="tabelaFaturamentosAnuais">
+                    <thead>
+                      <tr>
+                        <th>Ano</th>
+                        <th class="text-end">Faturamento (R$)</th>
+                        <th class="text-end" style="width:100px">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+                <p class="text-muted small mb-0" id="resumoFaturamentosAnuais">Nenhum faturamento de referência cadastrado.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção Relatórios -->
+      <div id="secao-relatorios" style="display: none;">
+        <h2 class="h4 mb-4">Relatórios</h2>
+
+        <div class="row g-4">
+          <!-- Relatório de Recebimentos -->
+          <div class="col-12 col-xl-7">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h3 class="h6 mb-0">Relatório de Recebimentos</h3>
+                <button id="exportarRelRecebimentos" class="btn btn-outline-secondary btn-sm">
+                  Exportar CSV
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="row g-3 mb-3">
+                  <div class="col-12 col-md-4">
+                    <label for="relFiltroPoupatempo" class="form-label fw-semibold">Poupatempo</label>
+                    <select id="relFiltroPoupatempo" class="form-select">
+                      <option value="">Todos</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label for="relDataInicio" class="form-label fw-semibold">Data edição (início)</label>
+                    <input type="date" id="relDataInicio" class="form-control" />
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label for="relDataFim" class="form-label fw-semibold">Data edição (fim)</label>
+                    <input type="date" id="relDataFim" class="form-control" />
+                  </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 mb-3">
+                  <button id="aplicarRelRecebimentos" class="btn btn-outline-primary btn-sm">Aplicar filtros</button>
+                  <button id="limparRelRecebimentos" class="btn btn-outline-secondary btn-sm">Limpar</button>
+                </div>
+                <p class="text-muted small" id="resumoRelRecebimentos">
+                  Nenhum dado filtrado.
+                </p>
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped align-middle" id="tabelaRelRecebimentos">
+                    <thead>
+                      <tr>
+                        <th>Poupatempo</th>
+                        <th>Data edição</th>
+                        <th>Data recebimento</th>
+                        <th class="text-end">Qtd. registros</th>
+                        <th class="text-end">Qtd. exemplares</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Relatório Financeiro / Descartes -->
+          <div class="col-12 col-xl-5">
+            <div class="card shadow-sm mb-3">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h3 class="h6 mb-0">Resumo Financeiro</h3>
+                <button id="exportarRelFinanceiro" class="btn btn-outline-secondary btn-sm">
+                  Exportar CSV
+                </button>
+              </div>
+              <div class="card-body">
+                <ul class="list-group list-group-flush small" id="listaResumoFinanceiro">
+                  <!-- preenchido via JS -->
+                </ul>
+              </div>
+            </div>
+
+            <div class="card shadow-sm">
+              <div class="card-header bg-white">
+                <h3 class="h6 mb-0">Relatório de Descarte</h3>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-0">
+                  O registro de descarte está, neste momento, sendo controlado apenas na
+                  tela do Funcionário Poupatempo (sessão atual do usuário).
+                  Para relatórios consolidados de descarte, será necessário
+                  evoluir o armazenamento desses dados no sistema central.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção Parceiros -->
+      <div id="secao-parceiros" style="display: none;">
+        <ul class="nav nav-tabs mb-4" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-cadastro-parceiro" data-bs-toggle="tab" data-bs-target="#painel-cadastro-parceiro" type="button" role="tab">
+              Cadastrar Parceiro
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-lista-parceiros" data-bs-toggle="tab" data-bs-target="#painel-lista-parceiros" type="button" role="tab">
+              Listar Parceiros
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <!-- Painel Cadastro Parceiro -->
+          <div class="tab-pane fade show active" id="painel-cadastro-parceiro" role="tabpanel">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white">
+                <h2 class="h5 mb-0" id="tituloFormularioParceiro">Cadastrar Novo Parceiro</h2>
+              </div>
+              <div class="card-body">
+                <form id="cadastroParceiroForm" class="vstack gap-3">
+                  <input type="hidden" id="parceiroIdEdicao" value="" />
+                  <div class="row">
+                    <div class="col-12 col-md-6">
+                      <label for="nomeParceiro" class="form-label fw-semibold">Nome do Parceiro *</label>
+                      <input type="text" id="nomeParceiro" class="form-control" required placeholder="Nome da empresa/parceiro" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                      <label for="cepParceiro" class="form-label fw-semibold">CEP</label>
+                      <input type="text" id="cepParceiro" class="form-control" placeholder="00000-000" maxlength="9" />
+                      <small class="text-muted">Digite o CEP para buscar o endereço automaticamente</small>
+                    </div>
+                    <div class="col-12 col-md-3 d-flex align-items-end">
+                      <button type="button" id="btnBuscarCepParceiro" class="btn btn-outline-secondary w-100">Buscar CEP</button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-12">
+                      <label for="enderecoParceiro" class="form-label fw-semibold">Endereço *</label>
+                      <input type="text" id="enderecoParceiro" class="form-control" required placeholder="Endereço completo (será preenchido automaticamente ao buscar CEP)" />
+                      <div id="mensagemCepParceiro" class="mt-2"></div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-12">
+                      <label for="servicosContratados" class="form-label fw-semibold">Serviços Contratados *</label>
+                      <textarea id="servicosContratados" class="form-control" required rows="3" placeholder="Descreva os serviços contratados com este parceiro"></textarea>
+                    </div>
+                  </div>
+                  <div class="border rounded p-3 bg-light">
+                    <h6 class="fw-bold mb-3">Responsável pelo Parceiro</h6>
+                    <div class="row">
+                      <div class="col-12 col-md-4">
+                        <label for="responsavelParceiroNome" class="form-label fw-semibold">Nome do Responsável *</label>
+                        <input type="text" id="responsavelParceiroNome" class="form-control" required placeholder="Nome completo" />
+                      </div>
+                      <div class="col-12 col-md-4">
+                        <label for="responsavelParceiroEmail" class="form-label fw-semibold">E-mail do Responsável *</label>
+                        <input type="email" id="responsavelParceiroEmail" class="form-control" required placeholder="email@exemplo.com" />
+                      </div>
+                      <div class="col-12 col-md-4">
+                        <label for="responsavelParceiroSenha" class="form-label fw-semibold">Senha do Responsável *</label>
+                        <input type="password" id="responsavelParceiroSenha" class="form-control" required placeholder="Defina a senha de acesso" />
+                        <small class="text-muted">Senha para login do responsável</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary" id="btnSalvarParceiro">Salvar Parceiro</button>
+                    <button type="button" class="btn btn-outline-secondary d-none" id="btnCancelarEdicaoParceiro">Cancelar Edição</button>
+                  </div>
+                  <div id="mensagemCadastroParceiro" class="alert d-none" role="alert"></div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Painel Lista Parceiros -->
+          <div class="tab-pane fade" id="painel-lista-parceiros" role="tabpanel">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">Parceiros Cadastrados</h2>
+                <button id="exportarParceiros" class="btn btn-outline-secondary btn-sm">Exportar CSV</button>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped align-middle" id="tabelaParceiros">
+                    <thead>
+                      <tr>
+                        <th>Nome</th>
+                        <th>CEP</th>
+                        <th>Endereço</th>
+                        <th>Serviços</th>
+                        <th>Responsável</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+                <p class="text-muted small mb-0 mt-3" id="resumoParceiros">Nenhum parceiro cadastrado.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção Fechamentos -->
+      <div id="secao-fechamentos" style="display: none;">
+        <h2 class="h4 mb-4">Fechamentos Pendentes de Aprovação</h2>
+        
+        <div class="card shadow-sm">
+          <div class="card-header bg-white">
+            <h3 class="h6 mb-0">Fechamentos Aguardando Aprovação</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle" id="tabelaFechamentos">
+                <thead>
+                  <tr>
+                    <th>Parceiro</th>
+                    <th>Data Criação</th>
+                    <th class="text-end">Qtd. Serviços</th>
+                    <th class="text-end">Quantidade Total</th>
+                    <th class="text-end">Valor Total</th>
+                    <th class="text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <p class="text-muted small mb-0 mt-3" id="resumoFechamentos">Nenhum fechamento pendente.</p>
+          </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+          <div class="card-header bg-white">
+            <h3 class="h6 mb-0">Fechamentos Aprovados</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle" id="tabelaFechamentosAprovados">
+                <thead>
+                  <tr>
+                    <th>Parceiro</th>
+                    <th>Data Criação</th>
+                    <th>Data Aprovação</th>
+                    <th class="text-end">Qtd. Serviços</th>
+                    <th class="text-end">Quantidade Total</th>
+                    <th class="text-end">Valor Total</th>
+                    <th>Aprovado por</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <p class="text-muted small mb-0 mt-3" id="resumoFechamentosAprovados">Nenhum fechamento aprovado.</p>
+          </div>
+        </div>
+      </div>
+      </main>
+    </div>
+
+    <!-- Modal de Mensagens -->
+    <div class="modal fade" id="modalMensagens" tabindex="-1" aria-labelledby="modalMensagensLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalMensagensLabel">
+              <i class="bi bi-envelope"></i> Mensagens
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-4">
+              <!-- Formulário de Envio -->
+              <div class="col-12 col-lg-4">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-white">
+                    <h3 class="h6 mb-0">Nova Mensagem</h3>
+                  </div>
+                  <div class="card-body">
+                    <form id="formMensagem" class="vstack gap-3">
+                      <div>
+                        <label for="destinatariosMensagem" class="form-label fw-semibold">Destinatários *</label>
+                        <select id="destinatariosMensagem" class="form-select" multiple size="8" required>
+                          <option value="todos">📢 Enviar para Todos</option>
+                        </select>
+                        <small class="text-muted">Segure Ctrl (ou Cmd no Mac) para selecionar múltiplos destinatários</small>
+                      </div>
+                      <div>
+                        <label for="assuntoMensagem" class="form-label fw-semibold">Assunto *</label>
+                        <input type="text" id="assuntoMensagem" class="form-control" required placeholder="Digite o assunto da mensagem" />
+                      </div>
+                      <div>
+                        <label for="conteudoMensagem" class="form-label fw-semibold">Mensagem *</label>
+                        <textarea id="conteudoMensagem" class="form-control" rows="6" required placeholder="Digite sua mensagem aqui..."></textarea>
+                      </div>
+                      <button type="submit" class="btn btn-primary">Enviar Mensagem</button>
+                      <div id="mensagemFormMensagem" class="alert d-none" role="alert"></div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Lista de Mensagens -->
+              <div class="col-12 col-lg-8">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h3 class="h6 mb-0">Mensagens Recebidas</h3>
+                    <div class="d-flex gap-2 align-items-center">
+                      <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="filtroMensagens" id="filtroRecebidas" value="recebidas" checked>
+                        <label class="btn btn-outline-primary btn-sm" for="filtroRecebidas">Recebidas</label>
+                        
+                        <input type="radio" class="btn-check" name="filtroMensagens" id="filtroEnviadas" value="enviadas">
+                        <label class="btn btn-outline-primary btn-sm" for="filtroEnviadas">Enviadas</label>
+                      </div>
+                      <button id="btnExcluirMensagensSelecionadas" class="btn btn-outline-danger btn-sm" style="display: none;">
+                        <i class="bi bi-trash"></i> Excluir Selecionadas
+                      </button>
+                    </div>
+                  </div>
+                  <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                    <div id="listaMensagens" class="list-group list-group-flush">
+                      <!-- Mensagens serão inseridas aqui via JavaScript -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Configuração do Supabase -->
+    <script src="supabase-config.js"></script>
+    <!-- Funções de acesso ao banco -->
+    <script src="supabase-db.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="auth.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>

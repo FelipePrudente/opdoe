@@ -981,6 +981,58 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
           </div>
+          </div>
+        </div>
+      </div>
+
+    <!-- Modal de Detalhes do Fechamento -->
+    <div class="modal fade" id="modalDetalhesFechamento" tabindex="-1" aria-labelledby="modalDetalhesFechamentoLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalDetalhesFechamentoLabel">
+              <i class="bi bi-list-check"></i> Detalhes do Fechamento
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <h6 class="fw-bold">Informações do Fechamento</h6>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <p class="mb-1"><strong>Parceiro:</strong> <span id="detalheFechamentoParceiro">-</span></p>
+                  <p class="mb-1"><strong>Data de Criação:</strong> <span id="detalheFechamentoDataCriacao">-</span></p>
+                  <p class="mb-1"><strong>Status:</strong> <span id="detalheFechamentoStatus">-</span></p>
+                </div>
+                <div class="col-md-6">
+                  <p class="mb-1"><strong>Quantidade Total:</strong> <span id="detalheFechamentoQuantidade">-</span></p>
+                  <p class="mb-1"><strong>Valor Total:</strong> <span id="detalheFechamentoValor">-</span></p>
+                  <p class="mb-1"><strong>Qtd. de Serviços:</strong> <span id="detalheFechamentoQtdServicos">-</span></p>
+                </div>
+              </div>
+            </div>
+            <hr>
+            <h6 class="fw-bold mb-3">Lançamentos do Fechamento</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle" id="tabelaDetalhesFechamento">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Serviço Prestado</th>
+                    <th class="text-end">Quantidade</th>
+                    <th class="text-end">Qtd. Páginas</th>
+                    <th class="text-end">Valor da Nota</th>
+                    <th>Observações</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyDetalhesFechamento">
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+          </div>
         </div>
       </div>
     </div>

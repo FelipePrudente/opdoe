@@ -1697,6 +1697,14 @@ async function atualizarTabelaFechamentos() {
 
       const tr = document.createElement("tr");
       const parceiro = (parceiros || []).find((p) => p.id === parcId);
+      
+      // Adicionar estilo de cursor pointer e evento de clique
+      tr.style.cursor = "pointer";
+      tr.addEventListener("click", (e) => {
+        // Não abrir modal se clicar nos botões
+        if (e.target.tagName === "BUTTON") return;
+        mostrarDetalhesFechamento(fechamento);
+      });
 
       tr.appendChild(criarTd(parceiro ? parceiro.nome : "Parceiro não encontrado"));
       tr.appendChild(criarTd(formatarDataHora(criadoEm)));
@@ -1772,6 +1780,13 @@ async function atualizarTabelaFechamentos() {
         const aprovador = (typeof usuarios !== "undefined" ? usuarios : []).find((u) => u.id === aprovadoPor);
         const tr = document.createElement("tr");
         const parceiro = (parceiros || []).find((p) => p.id === parcId);
+        
+        // Adicionar estilo de cursor pointer e evento de clique
+        tr.style.cursor = "pointer";
+        tr.addEventListener("click", () => {
+          mostrarDetalhesFechamento(fechamento);
+        });
+        
         tr.appendChild(criarTd(parceiro ? parceiro.nome : "Parceiro não encontrado"));
         tr.appendChild(criarTd(formatarDataHora(criadoEm)));
         tr.appendChild(criarTd(formatarDataHora(aprovadoEm) || "—"));
@@ -1789,6 +1804,124 @@ async function atualizarTabelaFechamentos() {
   }
   const elResumoAprovados = document.getElementById("resumoFechamentosAprovados");
   if (elResumoAprovados) elResumoAprovados.textContent = `Total: ${fechamentosAprovados.length} fechamento(s) aprovado(s).`;
+}
+
+// ========== FUNÇÃO PARA MOSTRAR DETALHES DO FECHAMENTO ==========
+async function mostrarDetalhesFechamento(fechamento) {
+  // Carregar serviços se necessário
+  const carregarAsync = typeof carregarServicosParceiros === "function" && carregarServicosParceiros.constructor.name === "AsyncFunction";
+  if (carregarAsync) {
+    await carregarServicosParceiros();
+  } else if (typeof carregarServicosParceiros === "function") {
+    carregarServicosParceiros();
+  }
+  
+  // Carregar parceiros se necessário
+  const carregarParceirosAsync = typeof carregarParceiros === "function" && carregarParceiros.constructor.name === "AsyncFunction";
+  if (carregarParceirosAsync) {
+    await carregarParceiros();
+  } else if (typeof carregarParceiros === "function") {
+    carregarParceiros();
+  }
+
+  const parcId = fechamento.parceiroId ?? fechamento.parceiro_id;
+  const servIds = fechamento.servicosIds ?? fechamento.servicos_ids ?? [];
+  const qtdTotal = fechamento.quantidadeTotal ?? fechamento.quantidade_total;
+  const valTotal = fechamento.valorTotal ?? fechamento.valor_total;
+  const criadoEm = fechamento.criadoEm ?? fechamento.criado_em;
+  const aprovadoEm = fechamento.aprovado_em ?? fechamento.aprovadoEm;
+  const status = fechamento.status || "pendente";
+  const aprovadoPor = fechamento.aprovado_por ?? fechamento.aprovadoPor;
+  const aprovador = (typeof usuarios !== "undefined" ? usuarios : []).find((u) => u.id === aprovadoPor);
+
+  const parceiro = (parceiros || []).find((p) => p.id === parcId);
+
+  // Preencher informações do fechamento
+  document.getElementById("detalheFechamentoParceiro").textContent = parceiro ? parceiro.nome : "Parceiro não encontrado";
+  document.getElementById("detalheFechamentoDataCriacao").textContent = formatarDataHora(criadoEm);
+  
+  let statusTexto = "";
+  if (status === "pendente") {
+    statusTexto = '<span class="badge bg-warning">Aguardando Aprovação</span>';
+  } else if (status === "aprovado") {
+    statusTexto = '<span class="badge bg-success">Aprovado</span>';
+  } else if (status === "rejeitado") {
+    statusTexto = '<span class="badge bg-danger">Rejeitado</span>';
+  } else {
+    statusTexto = status;
+  }
+  document.getElementById("detalheFechamentoStatus").innerHTML = statusTexto;
+  
+  document.getElementById("detalheFechamentoQuantidade").textContent = qtdTotal != null ? qtdTotal.toLocaleString("pt-BR") : "-";
+  document.getElementById("detalheFechamentoValor").textContent = formatarMoeda(valTotal ?? 0);
+  document.getElementById("detalheFechamentoQtdServicos").textContent = servIds.length;
+
+  // Buscar e exibir os serviços
+  const tbody = document.getElementById("tbodyDetalhesFechamento");
+  tbody.innerHTML = "";
+
+  if (!servIds.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 6;
+    td.className = "text-center text-muted";
+    td.textContent = "Nenhum serviço encontrado neste fechamento.";
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  } else {
+    // Buscar os serviços pelos IDs
+    const servicos = servIds.map((id) => {
+      const servico = (typeof servicosParceiros !== "undefined" ? servicosParceiros : []).find((s) => s.id === id);
+      return servico;
+    }).filter(Boolean);
+
+    // Ordenar por data
+    servicos.sort((a, b) => {
+      const dataA = a.data ?? a.data_servico ?? "";
+      const dataB = b.data ?? b.data_servico ?? "";
+      return dataB.localeCompare(dataA);
+    });
+
+    servicos.forEach((servico) => {
+      const tr = document.createElement("tr");
+      
+      const data = servico.data ?? servico.data_servico ?? "-";
+      // Formatar data no formato brasileiro (DD/MM/YYYY)
+      let dataFormatada = "-";
+      if (data && data !== "-") {
+        if (typeof formatarData === "function") {
+          dataFormatada = formatarData(data);
+        } else {
+          // Fallback: formatar manualmente
+          const partes = data.split("-");
+          if (partes.length === 3) {
+            dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+          } else {
+            dataFormatada = data;
+          }
+        }
+      }
+      
+      const servicoPrestado = servico.servico_prestado ?? servico.servicoPrestado ?? "-";
+      const quantidade = servico.quantidade ?? 0;
+      const quantidadePaginas = servico.quantidade_paginas ?? servico.quantidadePaginas ?? 0;
+      const valorNota = servico.valor_nota ?? servico.valorNota ?? 0;
+      const observacao = servico.observacao ?? servico.observacoes ?? "";
+
+      tr.appendChild(criarTd(dataFormatada));
+      tr.appendChild(criarTd(servicoPrestado));
+      tr.appendChild(criarTd(quantidade.toLocaleString("pt-BR"), "text-end"));
+      tr.appendChild(criarTd(quantidadePaginas > 0 ? quantidadePaginas.toLocaleString("pt-BR") : "-", "text-end"));
+      tr.appendChild(criarTd(formatarMoeda(valorNota), "text-end"));
+      tr.appendChild(criarTd(observacao || "-"));
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Mostrar modal
+  const modal = new bootstrap.Modal(document.getElementById("modalDetalhesFechamento"));
+  modal.show();
 }
 
 // ========== FUNÇÃO PARA LIMPAR TODOS OS DADOS ==========

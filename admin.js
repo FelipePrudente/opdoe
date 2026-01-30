@@ -2455,38 +2455,67 @@ function exportarPoupatemposDashboardCsv() {
   downloadCsv(conteudo, `poupatempos_dashboard_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
-function calcularDiferencaDias(dataEdicao, dataRecebimento) {
-  if (!dataEdicao || !dataRecebimento) return null;
-  
+/**
+ * Verifica se uma data é dia útil (segunda a sexta).
+ * @param {Date} data - Objeto Date
+ * @returns {boolean}
+ */
+function ehDiaUtil(data) {
+  const dia = data.getDay(); // 0 = domingo, 6 = sábado
+  return dia >= 1 && dia <= 5;
+}
+
+/**
+ * Conta apenas dias úteis (segunda a sexta) entre duas datas.
+ * Mesmo dia = 0. Caso contrário, conta dias d onde dataInicio < d <= dataFim (exclui o dia inicial).
+ * dataInicio e dataFim no formato YYYY-MM-DD ou Date.
+ * @param {string|Date} dataInicio
+ * @param {string|Date} dataFim
+ * @returns {number|null} Quantidade de dias úteis ou null em caso de erro
+ */
+function contarDiasUteisEntre(dataInicio, dataFim) {
+  if (!dataInicio || !dataFim) return null;
   try {
-    const data1 = new Date(dataEdicao + "T00:00:00");
-    const data2 = new Date(dataRecebimento + "T00:00:00");
-    
-    if (isNaN(data1.getTime()) || isNaN(data2.getTime())) return null;
-    
-    const diferencaMs = data2.getTime() - data1.getTime();
-    const diferencaDias = Math.floor(diferencaMs / (1000 * 60 * 60 * 24));
-    
-    return diferencaDias;
+    const inicio = typeof dataInicio === "string" ? new Date(dataInicio + "T00:00:00") : new Date(dataInicio);
+    const fim = typeof dataFim === "string" ? new Date(dataFim + "T00:00:00") : new Date(dataFim);
+    inicio.setHours(0, 0, 0, 0);
+    fim.setHours(0, 0, 0, 0);
+    if (isNaN(inicio.getTime()) || isNaN(fim.getTime())) return null;
+    if (inicio.getTime() > fim.getTime()) return null;
+    // Mesmo dia: quantidade de dias = 0
+    if (inicio.getTime() === fim.getTime()) return 0;
+    // Contar apenas dias úteis após o dia inicial até o dia final (inclusive)
+    let count = 0;
+    const atual = new Date(inicio);
+    atual.setDate(atual.getDate() + 1); // começar no dia seguinte
+    while (atual.getTime() <= fim.getTime()) {
+      if (ehDiaUtil(atual)) count++;
+      atual.setDate(atual.getDate() + 1);
+    }
+    return count;
   } catch {
     return null;
   }
 }
 
+/**
+ * Diferença em dias úteis entre data de edição e data de recebimento.
+ * Mesmo dia = 0. Usado no dashboard e na aba Ver registros de recebimento.
+ */
+function calcularDiferencaDias(dataEdicao, dataRecebimento) {
+  return contarDiasUteisEntre(dataEdicao, dataRecebimento);
+}
+
 function calcularDiasDesdeData(data) {
   if (!data) return null;
-  
   try {
-    const dataReferencia = new Date(data + "T00:00:00");
+    const dataReferencia = typeof data === "string" ? new Date(data + "T00:00:00") : new Date(data);
     const dataAtual = new Date();
+    dataReferencia.setHours(0, 0, 0, 0);
     dataAtual.setHours(0, 0, 0, 0);
-    
     if (isNaN(dataReferencia.getTime())) return null;
-    
-    const diferencaMs = dataAtual.getTime() - dataReferencia.getTime();
-    const diferencaDias = Math.floor(diferencaMs / (1000 * 60 * 60 * 24));
-    
-    return diferencaDias;
+    if (dataReferencia.getTime() > dataAtual.getTime()) return null;
+    return contarDiasUteisEntre(dataReferencia, dataAtual);
   } catch {
     return null;
   }

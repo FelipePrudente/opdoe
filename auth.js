@@ -10,11 +10,13 @@ const STORAGE_KEY_SERVICOS_PARCEIROS = "gestao_diario_oficial_servicos_parceiros
 const STORAGE_KEY_FECHAMENTOS = "gestao_diario_oficial_fechamentos_v1";
 const STORAGE_KEY_MENSAGENS = "gestao_diario_oficial_mensagens_v1";
 const STORAGE_KEY_FATURAMENTO_ANUAL = "gestao_diario_oficial_faturamento_anual_v1";
+const STORAGE_KEY_DESCARTES = "gestao_diario_oficial_descartes_v1";
 
 // Dados globais
 let usuarios = [];
 let poupatempos = [];
 let registros = [];
+let descartes = [];
 let investimentos = [];
 let receitas = [];
 let parceiros = [];
@@ -260,6 +262,41 @@ function carregarRegistros() {
 
 function salvarRegistros() {
   localStorage.setItem(STORAGE_KEY_REGISTROS, JSON.stringify(registros));
+}
+
+// ========== GERENCIAMENTO DE DESCARTES ==========
+function carregarDescartes() {
+  const salvo = localStorage.getItem(STORAGE_KEY_DESCARTES);
+  if (!salvo) {
+    descartes = [];
+    return;
+  }
+  try {
+    descartes = JSON.parse(salvo) || [];
+  } catch {
+    descartes = [];
+  }
+}
+
+function salvarDescartes() {
+  localStorage.setItem(STORAGE_KEY_DESCARTES, JSON.stringify(descartes));
+}
+
+function criarDescarte(dados) {
+  const novo = {
+    id: `desc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    poupatempoId: dados.poupatempoId,
+    dataDescarte: dados.dataDescarte,
+    data_descarte: dados.dataDescarte,
+    quantidade: Number(dados.quantidade),
+    motivo: dados.motivo?.trim() || null,
+    observacoes: dados.observacoes?.trim() || null,
+    criadoEm: new Date().toISOString(),
+    criado_em: new Date().toISOString(),
+  };
+  descartes.push(novo);
+  salvarDescartes();
+  return { sucesso: true, mensagem: "Descarte registrado com sucesso!", descarte: novo };
 }
 
 // ========== GERENCIAMENTO DE INVESTIMENTOS ==========
@@ -1021,6 +1058,7 @@ function downloadCsv(conteudo, nomeArquivo) {
       await carregarUsuarios();
       await carregarPoupatempos();
       await carregarRegistros();
+      if (typeof carregarDescartes === "function") await carregarDescartes();
       await carregarInvestimentos();
       await carregarReceitas();
       if (typeof carregarFaturamentosAnuais === "function") await carregarFaturamentosAnuais();
@@ -1038,6 +1076,7 @@ function downloadCsv(conteudo, nomeArquivo) {
         carregarUsuarios();
         carregarPoupatempos();
         carregarRegistros();
+        if (typeof carregarDescartes === "function") carregarDescartes();
         carregarInvestimentos();
         carregarReceitas();
         if (typeof carregarFaturamentosAnuais === "function") carregarFaturamentosAnuais();

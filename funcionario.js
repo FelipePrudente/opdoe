@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Configurar formulário de descarte (apenas controle em memória na sessão)
+  // Configurar formulário de descarte (salvo no banco de dados / localStorage)
   const formDescarte = document.getElementById("descarteForm");
   if (formDescarte) {
     const tabelaDescartesBody = document.querySelector("#tabelaDescartes tbody");
@@ -78,29 +78,38 @@ document.addEventListener("DOMContentLoaded", () => {
     const emptyDescarte = document.getElementById("emptyDescarte");
     const mensagemDescarte = document.getElementById("mensagemDescarte");
 
-    let descartesSessao = [];
-
     const formatarDataSimples = (valor) => {
       if (!valor) return "-";
-      const [ano, mes, dia] = valor.split("-");
+      const [ano, mes, dia] = String(valor).split("T")[0].split("-");
       return `${dia}/${mes}/${ano}`;
     };
 
+    const obterDescartesDoPoupatempo = () => {
+      const poupatempoId = usuarioLogado?.poupatempoId ?? usuarioLogado?.poupatempo_id;
+      if (!poupatempoId) return [];
+      const lista = typeof descartes !== "undefined" ? (descartes || []) : [];
+      return lista.filter(
+        (d) => (d.poupatempo_id || d.poupatempoId) === poupatempoId
+      );
+    };
+
     const atualizarTabelaDescartes = () => {
+      if (!tabelaDescartesBody) return;
+      const lista = obterDescartesDoPoupatempo();
       tabelaDescartesBody.innerHTML = "";
-      if (!descartesSessao.length) {
+      if (!lista.length) {
         resumoDescarte.textContent = "Total registrado: 0 jornais";
-        emptyDescarte.style.display = "block";
+        if (emptyDescarte) emptyDescarte.style.display = "block";
         return;
       }
-      emptyDescarte.style.display = "none";
+      if (emptyDescarte) emptyDescarte.style.display = "none";
 
       let total = 0;
-      descartesSessao.forEach((item) => {
-        total += item.quantidade;
-        const tr = document.createElement("tr");
-
-        const motivoLabel = item.motivo
+      lista.forEach((item) => {
+        const qtd = item.quantidade ?? 0;
+        total += qtd;
+        const dataDescarte = item.data_descarte ?? item.dataDescarte ?? "";
+        const motivoLabel = (item.motivo)
           ? {
               sobra: "Sobra de tiragem",
               vencido: "Jornal vencido",
@@ -109,20 +118,20 @@ document.addEventListener("DOMContentLoaded", () => {
             }[item.motivo] || item.motivo
           : "-";
 
+        const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${formatarDataSimples(item.dataDescarte)}</td>
-          <td class="text-end">${item.quantidade}</td>
+          <td>${formatarDataSimples(dataDescarte)}</td>
+          <td class="text-end">${qtd}</td>
           <td>${motivoLabel}</td>
           <td>${item.observacoes || "-"}</td>
         `;
-
         tabelaDescartesBody.appendChild(tr);
       });
 
       resumoDescarte.textContent = `Total registrado: ${total} jornais`;
     };
 
-    formDescarte.addEventListener("submit", (e) => {
+    formDescarte.addEventListener("submit", async (e) => {
       e.preventDefault();
       mensagemDescarte.textContent = "";
       mensagemDescarte.className = "small";
@@ -161,20 +170,55 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      descartesSessao.push({
-        dataDescarte,
+      const ptId = usuarioLogado?.poupatempoId ?? usuarioLogado?.poupatempo_id;
+      if (!ptId) {
+        mensagemDescarte.textContent = "Poupatempo não identificado.";
+        mensagemDescarte.classList.add("text-danger");
+        return;
+      }
+
+      const dados = {
+        poupatempoId: ptId,
+        dataDescarte: dataDescarte,
         quantidade: quantidadeDescarte,
-        motivo: motivoDescarte,
-        observacoes: observacoesDescarte,
-        criadoEm: new Date().toISOString(),
-      });
+        motivo: motivoDescarte || null,
+        observacoes: observacoesDescarte || null,
+      };
 
+      try {
+        const criarDescarteFn = typeof criarDescarte === "function" ? criarDescarte : null;
+        if (!criarDescarteFn) {
+          mensagemDescarte.textContent = "Função de salvar descarte não disponível.";
+          mensagemDescarte.classList.add("text-danger");
+          return;
+        }
+        const resultado = await Promise.resolve(criarDescarteFn(dados));
+        if (resultado && resultado.sucesso) {
+          if (typeof carregarDescartes === "function") {
+            if (carregarDescartes.constructor?.name === "AsyncFunction") {
+              await carregarDescartes();
+            } else {
+              carregarDescartes();
+            }
+          }
+          atualizarTabelaDescartes();
+          mensagemDescarte.textContent = "Descarte registrado com sucesso.";
+          mensagemDescarte.classList.add("text-success");
+          formDescarte.reset();
+        } else {
+          mensagemDescarte.textContent = (resultado && resultado.mensagem) || "Erro ao registrar descarte.";
+          mensagemDescarte.classList.add("text-danger");
+        }
+      } catch (err) {
+        mensagemDescarte.textContent = err?.message || "Erro ao registrar descarte.";
+        mensagemDescarte.classList.add("text-danger");
+      }
+    });
+
+    // Ao carregar a página e quando os dados forem inicializados, exibir descartes
+    atualizarTabelaDescartes();
+    window.addEventListener("dadosInicializados", () => {
       atualizarTabelaDescartes();
-
-      mensagemDescarte.textContent = "Descarte registrado com sucesso.";
-      mensagemDescarte.classList.add("text-success");
-
-      formDescarte.reset();
     });
   }
 

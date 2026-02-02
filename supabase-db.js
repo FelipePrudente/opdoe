@@ -356,6 +356,66 @@ async function excluirRegistro(id) {
   return { sucesso: true, mensagem: "Registro excluído com sucesso!" };
 }
 
+// ========== GERENCIAMENTO DE DESCARTES ==========
+async function carregarDescartes() {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      if (typeof descartes !== "undefined") descartes = [];
+      return;
+    }
+    const { data, error } = await supabase
+      .from("descartes")
+      .select("*")
+      .order("data_descarte", { ascending: false });
+
+    if (error) {
+      console.error("Erro ao carregar descartes:", error);
+      if (typeof descartes !== "undefined") descartes = [];
+      return;
+    }
+    if (typeof descartes !== "undefined") descartes = data || [];
+  } catch (error) {
+    console.error("Erro ao carregar descartes:", error);
+    if (typeof descartes !== "undefined") descartes = [];
+  }
+}
+
+async function criarDescarte(dados) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { sucesso: false, mensagem: "Supabase não inicializado" };
+
+  const novo = {
+    id: `desc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    poupatempo_id: dados.poupatempoId ?? dados.poupatempo_id,
+    data_descarte: dados.dataDescarte ?? dados.data_descarte,
+    quantidade: Number(dados.quantidade),
+    motivo: dados.motivo?.trim() || null,
+    observacoes: dados.observacoes?.trim() || null,
+    criado_em: dados.criadoEm || new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from("descartes")
+    .insert([novo])
+    .select();
+
+  if (error) {
+    console.error("Erro ao criar descarte:", error);
+    return { sucesso: false, mensagem: "Erro ao registrar descarte: " + error.message };
+  }
+
+  if (data && data.length > 0) {
+    if (typeof descartes !== "undefined") {
+      descartes = descartes || [];
+      descartes.unshift(data[0]);
+    }
+    return { sucesso: true, mensagem: "Descarte registrado com sucesso!", descarte: data[0] };
+  }
+
+  return { sucesso: false, mensagem: "Erro ao registrar descarte." };
+}
+
 // ========== GERENCIAMENTO DE INVESTIMENTOS ==========
 async function carregarInvestimentos() {
   try {

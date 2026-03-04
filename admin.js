@@ -120,6 +120,14 @@ document.addEventListener("DOMContentLoaded", () => {
     mostrarSecaoDashboards();
   });
 
+  const menuVisao = document.getElementById("menu-visao-executiva");
+  if (menuVisao) {
+    menuVisao.addEventListener("click", (e) => {
+      e.preventDefault();
+      mostrarSecaoVisaoExecutiva();
+    });
+  }
+
   document.getElementById("menu-poupatempos").addEventListener("click", (e) => {
     e.preventDefault();
     mostrarSecaoPoupatempos();
@@ -325,6 +333,51 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("exportarInvestimentos").addEventListener("click", exportarInvestimentosCsv);
   document.getElementById("exportarReceitas").addEventListener("click", exportarReceitasCsv);
 
+  const inputReceitasCsv = document.getElementById("arquivoReceitasCsv");
+  if (inputReceitasCsv) {
+    inputReceitasCsv.addEventListener("change", async (e) => {
+      const arquivo = e.target.files?.[0];
+      if (!arquivo) return;
+      await importarReceitasCsv(arquivo);
+      // Limpar seleção para permitir reimportar o mesmo arquivo se necessário
+      e.target.value = "";
+    });
+  }
+
+  const btnExcluirReceitasSel = document.getElementById("btnExcluirReceitasSelecionadas");
+  if (btnExcluirReceitasSel) {
+    btnExcluirReceitasSel.addEventListener("click", excluirReceitasSelecionadas);
+  }
+  const checkTodasReceitas = document.getElementById("checkTodasReceitas");
+  if (checkTodasReceitas) {
+    checkTodasReceitas.addEventListener("change", () => {
+      const marcados = checkTodasReceitas.checked;
+      document.querySelectorAll(".checkbox-receita").forEach((cb) => {
+        cb.checked = marcados;
+      });
+      atualizarBotaoExcluirReceitas();
+    });
+  }
+
+  const btnAplicarFiltroReceitas = document.getElementById("aplicarFiltroReceitas");
+  if (btnAplicarFiltroReceitas) {
+    btnAplicarFiltroReceitas.addEventListener("click", (e) => {
+      e.preventDefault();
+      atualizarTabelaReceitas();
+    });
+  }
+  const btnLimparFiltroReceitas = document.getElementById("limparFiltroReceitas");
+  if (btnLimparFiltroReceitas) {
+    btnLimparFiltroReceitas.addEventListener("click", (e) => {
+      e.preventDefault();
+      const mes = document.getElementById("filtroMesReceita");
+      const ano = document.getElementById("filtroAnoReceita");
+      if (mes) mes.value = "";
+      if (ano) ano.value = "";
+      atualizarTabelaReceitas();
+    });
+  }
+
   const btnSalvarFatAnual = document.getElementById("btnSalvarFaturamentoAnual");
   if (btnSalvarFatAnual) {
     btnSalvarFatAnual.addEventListener("click", async () => {
@@ -500,6 +553,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function mostrarSecaoDashboards() {
   document.getElementById("secao-dashboards").style.display = "block";
+  const secVisao = document.getElementById("secao-visao-executiva");
+  if (secVisao) secVisao.style.display = "none";
   document.getElementById("secao-poupatempos").style.display = "none";
   document.getElementById("secao-financeiro").style.display = "none";
   document.getElementById("secao-parceiros").style.display = "none";
@@ -509,6 +564,8 @@ function mostrarSecaoDashboards() {
   const navTabs = document.querySelector(".nav.nav-tabs");
   if (navTabs) navTabs.style.display = "none";
   document.getElementById("menu-dashboards").classList.add("active");
+  const menuVisao = document.getElementById("menu-visao-executiva");
+  if (menuVisao) menuVisao.classList.remove("active");
   document.getElementById("menu-poupatempos").classList.remove("active");
   document.getElementById("menu-financeiro").classList.remove("active");
   document.getElementById("menu-parceiros").classList.remove("active");
@@ -520,6 +577,8 @@ function mostrarSecaoDashboards() {
 
 function mostrarSecaoPoupatempos() {
   document.getElementById("secao-dashboards").style.display = "none";
+  const secVisao = document.getElementById("secao-visao-executiva");
+  if (secVisao) secVisao.style.display = "none";
   document.getElementById("secao-financeiro").style.display = "none";
   document.getElementById("secao-parceiros").style.display = "none";
   document.getElementById("secao-fechamentos").style.display = "none";
@@ -530,6 +589,8 @@ function mostrarSecaoPoupatempos() {
   const navTabs = document.querySelector(".nav.nav-tabs");
   if (navTabs) navTabs.style.display = "flex";
   document.getElementById("menu-dashboards").classList.remove("active");
+  const menuVisao = document.getElementById("menu-visao-executiva");
+  if (menuVisao) menuVisao.classList.remove("active");
   document.getElementById("menu-poupatempos").classList.add("active");
   document.getElementById("menu-financeiro").classList.remove("active");
   document.getElementById("menu-parceiros").classList.remove("active");
@@ -547,11 +608,15 @@ function mostrarSecaoFinanceiro() {
   document.getElementById("secao-parceiros").style.display = "none";
   document.getElementById("secao-fechamentos").style.display = "none";
   document.getElementById("secao-relatorios").style.display = "none";
+  const secVisao = document.getElementById("secao-visao-executiva");
+  if (secVisao) secVisao.style.display = "none";
   document.querySelector(".tab-content").style.display = "none";
   // Ocultar as abas de Poupatempos
   const navTabs = document.querySelector(".nav.nav-tabs");
   if (navTabs) navTabs.style.display = "none";
   document.getElementById("menu-dashboards").classList.remove("active");
+  const menuVisao = document.getElementById("menu-visao-executiva");
+  if (menuVisao) menuVisao.classList.remove("active");
   document.getElementById("menu-poupatempos").classList.remove("active");
   document.getElementById("menu-financeiro").classList.add("active");
   document.getElementById("menu-parceiros").classList.remove("active");
@@ -591,6 +656,8 @@ function mostrarSecaoParceiros() {
   document.getElementById("secao-parceiros").style.display = "block";
   document.getElementById("secao-fechamentos").style.display = "none";
   document.getElementById("secao-relatorios").style.display = "none";
+  const secVisao = document.getElementById("secao-visao-executiva");
+  if (secVisao) secVisao.style.display = "none";
   document.querySelector(".tab-content").style.display = "none";
   // Ocultar as abas de Poupatempos
   const navTabs = document.querySelector(".nav.nav-tabs");
@@ -602,6 +669,8 @@ function mostrarSecaoParceiros() {
   document.getElementById("menu-fechamentos").classList.remove("active");
   document.getElementById("menu-mensagens").classList.remove("active");
   document.getElementById("menu-relatorios").classList.remove("active");
+  const menuVisao = document.getElementById("menu-visao-executiva");
+  if (menuVisao) menuVisao.classList.remove("active");
 }
 
 function mostrarSecaoFechamentos() {
@@ -611,6 +680,8 @@ function mostrarSecaoFechamentos() {
   document.getElementById("secao-parceiros").style.display = "none";
   document.getElementById("secao-fechamentos").style.display = "block";
   document.getElementById("secao-relatorios").style.display = "none";
+  const secVisao = document.getElementById("secao-visao-executiva");
+  if (secVisao) secVisao.style.display = "none";
   document.querySelector(".tab-content").style.display = "none";
   // Ocultar as abas de Poupatempos
   const navTabs = document.querySelector(".nav.nav-tabs");
@@ -622,6 +693,8 @@ function mostrarSecaoFechamentos() {
   document.getElementById("menu-fechamentos").classList.add("active");
   document.getElementById("menu-mensagens").classList.remove("active");
   document.getElementById("menu-relatorios").classList.remove("active");
+  const menuVisao = document.getElementById("menu-visao-executiva");
+  if (menuVisao) menuVisao.classList.remove("active");
   atualizarTabelaFechamentos();
 }
 
@@ -632,6 +705,8 @@ function mostrarSecaoRelatorios() {
   document.getElementById("secao-parceiros").style.display = "none";
   document.getElementById("secao-fechamentos").style.display = "none";
   document.getElementById("secao-relatorios").style.display = "block";
+  const secVisao = document.getElementById("secao-visao-executiva");
+  if (secVisao) secVisao.style.display = "none";
   document.querySelector(".tab-content").style.display = "none";
   const navTabs = document.querySelector(".nav.nav-tabs");
   if (navTabs) navTabs.style.display = "none";
@@ -642,8 +717,41 @@ function mostrarSecaoRelatorios() {
   document.getElementById("menu-fechamentos").classList.remove("active");
   document.getElementById("menu-mensagens").classList.remove("active");
   document.getElementById("menu-relatorios").classList.add("active");
+  const menuVisao = document.getElementById("menu-visao-executiva");
+  if (menuVisao) menuVisao.classList.remove("active");
   atualizarRelatorioRecebimentos();
   atualizarResumoFinanceiroRelatorio();
+  if (typeof atualizarRelatorioDescarte === "function") {
+    atualizarRelatorioDescarte();
+  }
+}
+
+function mostrarSecaoVisaoExecutiva() {
+  const secVisao = document.getElementById("secao-visao-executiva");
+  if (!secVisao) return;
+  document.getElementById("secao-dashboards").style.display = "none";
+  document.getElementById("secao-poupatempos").style.display = "none";
+  document.getElementById("secao-financeiro").style.display = "none";
+  document.getElementById("secao-parceiros").style.display = "none";
+  document.getElementById("secao-fechamentos").style.display = "none";
+  document.getElementById("secao-relatorios").style.display = "none";
+  secVisao.style.display = "block";
+
+  const navTabs = document.querySelector(".nav.nav-tabs");
+  if (navTabs) navTabs.style.display = "none";
+  document.querySelector(".tab-content").style.display = "none";
+
+  document.getElementById("menu-dashboards").classList.remove("active");
+  const menuVisao = document.getElementById("menu-visao-executiva");
+  if (menuVisao) menuVisao.classList.add("active");
+  document.getElementById("menu-poupatempos").classList.remove("active");
+  document.getElementById("menu-financeiro").classList.remove("active");
+  document.getElementById("menu-parceiros").classList.remove("active");
+  document.getElementById("menu-fechamentos").classList.remove("active");
+  document.getElementById("menu-mensagens").classList.remove("active");
+  document.getElementById("menu-relatorios").classList.remove("active");
+
+  atualizarVisaoExecutiva();
 }
 
 function atualizarRelatorioRecebimentos() {
@@ -749,9 +857,11 @@ function atualizarResumoFinanceiroRelatorio() {
 
   lista.innerHTML = "";
 
-  const fechamentosAprovados = fechamentos.filter((f) => f.status === "aprovado");
+  const fechamentosAprovados = (typeof fechamentos !== "undefined" ? fechamentos : []).filter(
+    (f) => f && f.status === "aprovado"
+  );
   const custoOperacional = fechamentosAprovados.reduce(
-    (sum, f) => sum + Number(f.valorTotal || 0),
+    (sum, f) => sum + Number((f.valorTotal ?? f.valor_total) || 0),
     0
   );
   const totalInvestimento = investimentos.reduce((sum, inv) => {
@@ -788,6 +898,395 @@ function atualizarResumoFinanceiroRelatorio() {
     li.appendChild(spanValor);
     lista.appendChild(li);
   });
+}
+
+function atualizarRelatorioDescarte() {
+  const tbody = document.querySelector("#tabelaRelDescartes tbody");
+  const resumo = document.getElementById("resumoRelDescartes");
+  if (!tbody || !resumo) return;
+
+  const listaGlobal = (typeof descartes !== "undefined" && Array.isArray(descartes)) ? descartes : [];
+
+  tbody.innerHTML = "";
+
+  if (!listaGlobal.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 5;
+    td.className = "text-center text-muted";
+    td.textContent = "Nenhum descarte cadastrado.";
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    resumo.textContent = "Nenhum descarte registrado.";
+    return;
+  }
+
+  // Ordenar por data de descarte (mais recente primeiro)
+  const listaOrdenada = [...listaGlobal].sort((a, b) => {
+    const da = a.data_descarte ?? a.dataDescarte ?? "";
+    const db = b.data_descarte ?? b.dataDescarte ?? "";
+    return db.localeCompare(da);
+  });
+
+  let totalQtd = 0;
+
+  listaOrdenada.forEach((item) => {
+    const tr = document.createElement("tr");
+    const poupaId = item.poupatempo_id ?? item.poupatempoId;
+    const poupa = typeof obterPoupatempoPorId === "function" ? obterPoupatempoPorId(poupaId) : null;
+
+    const data = item.data_descarte ?? item.dataDescarte ?? "";
+    const quantidade = Number(item.quantidade || 0);
+    const motivo = item.motivo || "-";
+    const observacoes = item.observacoes || "-";
+
+    totalQtd += quantidade;
+
+    tr.appendChild(criarTd(poupa ? poupa.nome : "N/A"));
+    const dataFormatada = (typeof formatarData === "function" && data) ? formatarData(data) : (data || "-");
+    tr.appendChild(criarTd(dataFormatada));
+    tr.appendChild(criarTd(quantidade.toLocaleString("pt-BR"), "text-end"));
+    tr.appendChild(criarTd(motivo));
+    tr.appendChild(criarTd(observacoes));
+
+    tbody.appendChild(tr);
+  });
+
+  resumo.textContent = `Total descartado: ${totalQtd.toLocaleString("pt-BR")} jornal(is).`;
+}
+
+// ========== VISÃO EXECUTIVA (GRÁFICOS) ==========
+let graficosVisaoExecutiva = {
+  faturamentoPedidosMensal: null,
+};
+
+function destruirGraficoSeExistir(chave) {
+  const g = graficosVisaoExecutiva[chave];
+  if (g && typeof g.destroy === "function") {
+    g.destroy();
+  }
+  graficosVisaoExecutiva[chave] = null;
+}
+
+function atualizarVisaoExecutiva() {
+  if (typeof Chart === "undefined") {
+    console.error("Chart.js não carregado.");
+    return;
+  }
+
+  // Helper para obter ano e mês de uma data (aceita Date, 'YYYY-MM-DD' ou 'DD/MM/YYYY')
+  const obterAnoMes = (valorData) => {
+    if (!valorData) return null;
+    // Se for Date
+    if (valorData instanceof Date) {
+      if (isNaN(valorData.getTime())) return null;
+      return { ano: valorData.getFullYear(), mes: valorData.getMonth() + 1 };
+    }
+    const s = String(valorData).trim();
+    if (!s) return null;
+    // Tentar DD/MM/YYYY ou YYYY-MM-DD quebrando manualmente (não confiar em Date.parse por causa de locale)
+    const partes = s.split(/[\/\-]/);
+    if (partes.length === 3) {
+      let ano, mes, dia;
+      if (partes[0].length === 4) {
+        // YYYY-MM-DD
+        ano = Number(partes[0]);
+        mes = Number(partes[1]);
+        dia = Number(partes[2]);
+      } else {
+        // DD/MM/YYYY
+        dia = Number(partes[0]);
+        mes = Number(partes[1]);
+        ano = Number(partes[2]);
+      }
+      if (!ano || !mes || !dia) return null;
+      return { ano, mes };
+    }
+    return null;
+  };
+
+  // Gráfico 1: Faturamento x Pedidos x Média mensal
+  const ctxFP = document.getElementById("graficoFaturamentoPedidos");
+  if (ctxFP) {
+    const mapaMeses = new Map();
+    (receitas || []).forEach((r) => {
+      const info = obterAnoMes(r?.data);
+      if (!info) return;
+      const anoMes = `${String(info.ano).padStart(4, "0")}-${String(info.mes).padStart(2, "0")}`;
+      const atual = mapaMeses.get(anoMes) || { faturamento: 0, pedidos: 0 };
+      const fat = Number(r.faturamento || 0);
+      const pedidos = Number(r.total_pedidos ?? r.totalPedidos ?? 0);
+      atual.faturamento += isNaN(fat) ? 0 : fat;
+      atual.pedidos += isNaN(pedidos) ? 0 : pedidos;
+      mapaMeses.set(anoMes, atual);
+    });
+
+    const chavesOrdenadas = Array.from(mapaMeses.keys()).sort();
+    const labelsMeses = chavesOrdenadas.map((ym) => {
+      const [ano, mes] = ym.split("-");
+      return `${mes}/${ano}`;
+    });
+    const dadosFaturamento = chavesOrdenadas.map((ym) => mapaMeses.get(ym).faturamento);
+    const dadosPedidos = chavesOrdenadas.map((ym) => mapaMeses.get(ym).pedidos);
+
+    const mediaFaturamento =
+      dadosFaturamento.length > 0
+        ? dadosFaturamento.reduce((sum, v) => sum + v, 0) / dadosFaturamento.length
+        : 0;
+    const dadosMedia = dadosFaturamento.map(() => Number(mediaFaturamento.toFixed(2)));
+
+    destruirGraficoSeExistir("faturamentoPedidosMensal");
+    graficosVisaoExecutiva.faturamentoPedidosMensal = new Chart(ctxFP.getContext("2d"), {
+      data: {
+        labels: labelsMeses,
+        datasets: [
+          {
+            type: "bar",
+            label: "Faturamento (R$)",
+            data: dadosFaturamento,
+            backgroundColor: "#0d6efd",
+            yAxisID: "y",
+          },
+          {
+            type: "line",
+            label: "Qtd. Pedidos",
+            data: dadosPedidos,
+            borderColor: "#ffc107",
+            backgroundColor: "#ffc107",
+            tension: 0.2,
+            yAxisID: "y1",
+          },
+          {
+            type: "line",
+            label: "Média de Faturamento",
+            data: dadosMedia,
+            borderColor: "#198754",
+            borderDash: [6, 4],
+            pointRadius: 0,
+            tension: 0,
+            yAxisID: "y",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { position: "bottom" },
+        },
+        scales: {
+          y: {
+            position: "left",
+            beginAtZero: true,
+          },
+          y1: {
+            position: "right",
+            beginAtZero: true,
+            grid: { drawOnChartArea: false },
+          },
+        },
+      },
+    });
+  }
+
+  // Quadro comparativo 2025 x 2026 mês a mês
+  const tbodyComp = document.querySelector("#tabelaComparativo2526 tbody");
+  const resumoComp = document.getElementById("resumoComparativo2526");
+  if (tbodyComp) {
+    tbodyComp.innerHTML = "";
+    const ano1 = 2025;
+    const ano2 = 2026;
+
+    const mapaAno1 = new Map(); // mês (1-12) -> valor
+    const mapaAno2 = new Map();
+
+    (receitas || []).forEach((r) => {
+      if (!r) return;
+      const info = obterAnoMes(r.data);
+      if (!info) return;
+      const ano = info.ano;
+      const mes = info.mes;
+      const valor = Number(r.faturamento || 0);
+      if (ano === ano1) {
+        mapaAno1.set(mes, (mapaAno1.get(mes) || 0) + (isNaN(valor) ? 0 : valor));
+      } else if (ano === ano2) {
+        mapaAno2.set(mes, (mapaAno2.get(mes) || 0) + (isNaN(valor) ? 0 : valor));
+      }
+    });
+
+    const nomesMeses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    let mesesComDados = 0;
+    let somaAno1 = 0;
+    let somaAno2 = 0;
+
+    for (let mes = 1; mes <= 12; mes++) {
+      const v1 = mapaAno1.get(mes) || 0;
+      const v2 = mapaAno2.get(mes) || 0;
+      if (v1 === 0 && v2 === 0) continue;
+      mesesComDados++;
+
+      somaAno1 += v1;
+      somaAno2 += v2;
+
+      const diff = v2 - v1;
+      const diffPct = v1 > 0 ? (diff / v1) * 100 : null;
+
+      const tr = document.createElement("tr");
+
+      const tdMes = document.createElement("td");
+      tdMes.textContent = nomesMeses[mes - 1];
+      tr.appendChild(tdMes);
+
+      const tdAno1 = document.createElement("td");
+      tdAno1.className = "text-end";
+      tdAno1.textContent = formatarMoeda(v1);
+
+      const tdAno2 = document.createElement("td");
+      tdAno2.className = "text-end";
+      tdAno2.textContent = formatarMoeda(v2);
+
+      // Destaque de quem faturou mais
+      if (v2 > v1) {
+        tdAno2.classList.add("fw-bold", "text-success");
+      } else if (v1 > v2) {
+        tdAno1.classList.add("fw-bold", "text-success");
+      }
+
+      tr.appendChild(tdAno1);
+      tr.appendChild(tdAno2);
+
+      const tdDiff = document.createElement("td");
+      tdDiff.className = "text-end";
+      tdDiff.textContent = formatarMoeda(diff);
+      if (diff > 0) {
+        tdDiff.classList.add("text-success");
+      } else if (diff < 0) {
+        tdDiff.classList.add("text-danger");
+      }
+      tr.appendChild(tdDiff);
+
+      const tdPct = document.createElement("td");
+      tdPct.className = "text-end";
+      if (diffPct === null) {
+        tdPct.textContent = "-";
+      } else {
+        const sinal = diffPct > 0 ? "+" : "";
+        tdPct.textContent = `${sinal}${diffPct.toFixed(1)}%`;
+        if (diffPct > 0) tdPct.classList.add("text-success");
+        else if (diffPct < 0) tdPct.classList.add("text-danger");
+      }
+      tr.appendChild(tdPct);
+
+      tbodyComp.appendChild(tr);
+    }
+
+    // Linha totalizadora
+    if (mesesComDados > 0) {
+      const diffTotal = somaAno2 - somaAno1;
+      const diffPctTotal = somaAno1 > 0 ? (diffTotal / somaAno1) * 100 : null;
+
+      const trTotal = document.createElement("tr");
+      trTotal.classList.add("fw-semibold");
+
+      const tdLabel = document.createElement("td");
+      tdLabel.textContent = "Total";
+      trTotal.appendChild(tdLabel);
+
+      const tdTot1 = document.createElement("td");
+      tdTot1.className = "text-end";
+      tdTot1.textContent = formatarMoeda(somaAno1);
+
+      const tdTot2 = document.createElement("td");
+      tdTot2.className = "text-end";
+      tdTot2.textContent = formatarMoeda(somaAno2);
+
+      if (somaAno2 > somaAno1) {
+        tdTot2.classList.add("text-success");
+      } else if (somaAno1 > somaAno2) {
+        tdTot1.classList.add("text-success");
+      }
+
+      trTotal.appendChild(tdTot1);
+      trTotal.appendChild(tdTot2);
+
+      const tdDiffTot = document.createElement("td");
+      tdDiffTot.className = "text-end";
+      tdDiffTot.textContent = formatarMoeda(diffTotal);
+      if (diffTotal > 0) tdDiffTot.classList.add("text-success");
+      else if (diffTotal < 0) tdDiffTot.classList.add("text-danger");
+      trTotal.appendChild(tdDiffTot);
+
+      const tdPctTot = document.createElement("td");
+      tdPctTot.className = "text-end";
+      if (diffPctTotal === null) {
+        tdPctTot.textContent = "-";
+      } else {
+        const sinal = diffPctTotal > 0 ? "+" : "";
+        tdPctTot.textContent = `${sinal}${diffPctTotal.toFixed(1)}%`;
+        if (diffPctTotal > 0) tdPctTot.classList.add("text-success");
+        else if (diffPctTotal < 0) tdPctTot.classList.add("text-danger");
+      }
+      trTotal.appendChild(tdPctTot);
+
+      tbodyComp.appendChild(trTotal);
+    }
+
+    // Card de média mensal 2025 x 2026
+    const elMedia25 = document.getElementById("mediaMensal2025");
+    const elMedia26 = document.getElementById("mediaMensal2026");
+    const elMediaDiffValor = document.getElementById("mediaMensalDiffValor");
+    const elMediaDiffPct = document.getElementById("mediaMensalDiffPct");
+
+    // Média deve considerar apenas meses "fechados" no ano corrente:
+    // se estamos em março/2026, usamos janeiro e fevereiro de 2025 e 2026.
+    let mesesFechados = new Date().getMonth(); // mês atual (1-12) menos 1
+    if (mesesFechados < 1) mesesFechados = 1;
+    if (mesesFechados > 12) mesesFechados = 12;
+
+    let somaAno1Fechados = 0;
+    let somaAno2Fechados = 0;
+    for (let mes = 1; mes <= mesesFechados; mes++) {
+      somaAno1Fechados += mapaAno1.get(mes) || 0;
+      somaAno2Fechados += mapaAno2.get(mes) || 0;
+    }
+
+    const denom = mesesFechados; // mesmo número de meses para ambos os anos
+    const media25 = denom > 0 ? somaAno1Fechados / denom : 0;
+    const media26 = denom > 0 ? somaAno2Fechados / denom : 0;
+    const diffMedia = media26 - media25;
+    const diffMediaPct = media25 > 0 ? (diffMedia / media25) * 100 : null;
+
+    if (elMedia25) {
+      elMedia25.textContent = formatarMoeda(media25);
+      elMedia25.className = "fw-semibold";
+    }
+    if (elMedia26) {
+      elMedia26.textContent = formatarMoeda(media26);
+      elMedia26.className = "fw-semibold";
+    }
+    if (elMediaDiffValor) {
+      elMediaDiffValor.textContent = formatarMoeda(diffMedia);
+      elMediaDiffValor.className = "fw-semibold " + (diffMedia > 0 ? "text-success" : diffMedia < 0 ? "text-danger" : "text-muted");
+    }
+    if (elMediaDiffPct) {
+      if (diffMediaPct == null) {
+        elMediaDiffPct.textContent = "-";
+        elMediaDiffPct.className = "fw-semibold text-muted";
+      } else {
+        const sinal = diffMediaPct > 0 ? "+" : "";
+        elMediaDiffPct.textContent = `${sinal}${diffMediaPct.toFixed(1)}%`;
+        elMediaDiffPct.className = "fw-semibold " + (diffMediaPct > 0 ? "text-success" : diffMediaPct < 0 ? "text-danger" : "text-muted");
+      }
+    }
+
+    if (resumoComp) {
+      if (mesesComDados === 0) {
+        resumoComp.textContent = "Nenhum dado de faturamento encontrado para 2025 e 2026.";
+      } else {
+        resumoComp.textContent = `Comparando faturamento mensal entre ${ano1} e ${ano2}. Meses com dados: ${mesesComDados}.`;
+      }
+    }
+  }
 }
 
 // Exportação de relatórios em CSV (event listeners movidos para o bloco principal de DOMContentLoaded)
@@ -919,6 +1418,8 @@ function mostrarSecaoMensagens() {
   
   // Remover classe active do menu (já que não é mais uma seção)
   document.getElementById("menu-mensagens").classList.remove("active");
+  const menuVisao = document.getElementById("menu-visao-executiva");
+  if (menuVisao) menuVisao.classList.remove("active");
 }
 
 function atualizarTabelaPoupatempos() {
@@ -1385,14 +1886,46 @@ function atualizarTabelaInvestimentos() {
 function atualizarTabelaReceitas() {
   const tbody = document.querySelector("#tabelaReceitas tbody");
   if (!tbody) return;
-  
-  if (!receitas.length) {
+
+  // Aplicar filtros de mês/ano, se informados
+  let lista = [...(receitas || [])];
+  const mesInput = document.getElementById("filtroMesReceita");
+  const anoInput = document.getElementById("filtroAnoReceita");
+  const filtroMes = mesInput && mesInput.value ? Number(mesInput.value) : null;
+  const filtroAno = anoInput && anoInput.value ? Number(anoInput.value) : null;
+
+  if (filtroMes || filtroAno) {
+    lista = lista.filter((rec) => {
+      if (!rec || !rec.data) return false;
+      let ano = null;
+      let mes = null;
+      const s = String(rec.data).trim();
+      const partes = s.split(/[\/\-]/);
+      if (partes.length === 3) {
+        if (partes[0].length === 4) {
+          // YYYY-MM-DD
+          ano = Number(partes[0]);
+          mes = Number(partes[1]);
+        } else {
+          // DD/MM/YYYY
+          ano = Number(partes[2]);
+          mes = Number(partes[1]);
+        }
+      }
+      if (!ano || !mes) return false;
+      if (filtroAno && ano !== filtroAno) return false;
+      if (filtroMes && mes !== filtroMes) return false;
+      return true;
+    });
+  }
+
+  if (!lista.length) {
     tbody.innerHTML = "";
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 4;
+    td.colSpan = 5;
     td.className = "text-center text-muted";
-    td.textContent = "Nenhuma receita cadastrada.";
+    td.textContent = filtroMes || filtroAno ? "Nenhuma receita encontrada para o filtro informado." : "Nenhuma receita cadastrada.";
     tr.appendChild(td);
     tbody.appendChild(tr);
     const controles = document.getElementById("paginacaoReceitas");
@@ -1401,6 +1934,16 @@ function atualizarTabelaReceitas() {
     const renderizarLinha = (rec) => {
       const tr = document.createElement("tr");
       const totalPedidos = rec.totalPedidos ?? rec.total_pedidos;
+
+      const tdCheck = document.createElement("td");
+      tdCheck.className = "text-center";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "form-check-input checkbox-receita";
+      cb.value = rec.id;
+      cb.addEventListener("change", atualizarBotaoExcluirReceitas);
+      tdCheck.appendChild(cb);
+      tr.appendChild(tdCheck);
 
       tr.appendChild(criarTd(formatarData(rec.data)));
       tr.appendChild(criarTd(formatarMoeda(rec.faturamento ?? 0), "text-end"));
@@ -1423,7 +1966,62 @@ function atualizarTabelaReceitas() {
       tbody.appendChild(tr);
     };
     
-    aplicarPaginacaoTabela(receitas, tbody, renderizarLinha, "paginacaoReceitas", atualizarTabelaReceitas);
+    aplicarPaginacaoTabela(lista, tbody, renderizarLinha, "paginacaoReceitas", atualizarTabelaReceitas);
+  }
+}
+
+function atualizarBotaoExcluirReceitas() {
+  const selecionados = document.querySelectorAll(".checkbox-receita:checked");
+  const btn = document.getElementById("btnExcluirReceitasSelecionadas");
+  if (btn) {
+    btn.style.display = selecionados.length > 0 ? "inline-block" : "none";
+  }
+}
+
+async function excluirReceitasSelecionadas() {
+  const checkboxes = Array.from(document.querySelectorAll(".checkbox-receita:checked"));
+  if (!checkboxes.length) return;
+  if (!confirm(`Confirma a exclusão de ${checkboxes.length} receita(s) selecionada(s)?`)) return;
+
+  const ids = checkboxes.map((cb) => cb.value);
+
+  try {
+    if (typeof excluirReceita === "function") {
+      const isAsync = excluirReceita.constructor?.name === "AsyncFunction";
+      if (isAsync) {
+        for (const id of ids) {
+          try {
+            await excluirReceita(id);
+          } catch (e) {
+            console.error("Erro ao excluir receita (lote):", e);
+          }
+        }
+      } else {
+        ids.forEach((id) => {
+          try {
+            excluirReceita(id);
+          } catch (e) {
+            console.error("Erro ao excluir receita (lote):", e);
+          }
+        });
+      }
+    }
+  } finally {
+    try {
+      if (typeof carregarReceitas === "function") {
+        if (carregarReceitas.constructor?.name === "AsyncFunction") {
+          await carregarReceitas();
+        } else {
+          carregarReceitas();
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao recarregar receitas após exclusão em lote:", e);
+    }
+    atualizarTabelaReceitas();
+    const checkTodas = document.getElementById("checkTodasReceitas");
+    if (checkTodas) checkTodas.checked = false;
+    atualizarBotaoExcluirReceitas();
   }
 }
 
@@ -1515,6 +2113,178 @@ function exportarReceitasCsv() {
     .join("\r\n");
 
   downloadCsv(conteudo, `receitas_${new Date().toISOString().slice(0, 10)}.csv`);
+}
+
+async function importarReceitasCsv(arquivo) {
+  const msg = document.getElementById("mensagemImportarReceitas");
+  if (msg) {
+    msg.className = "alert d-none";
+    msg.textContent = "";
+  }
+
+  try {
+    const texto = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result || "");
+      reader.onerror = () => reject(reader.error || new Error("Falha ao ler arquivo."));
+      reader.readAsText(arquivo, "utf-8");
+    });
+
+    const linhas = String(texto).split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    if (linhas.length <= 1) {
+      if (msg) {
+        msg.textContent = "Arquivo CSV vazio ou sem dados.";
+        msg.className = "alert alert-danger";
+        msg.classList.remove("d-none");
+      }
+      return;
+    }
+
+    const header = linhas[0];
+    const usaPontoEVirgula = (header.match(/;/g) || []).length >= (header.match(/,/g) || []).length;
+    const sep = usaPontoEVirgula ? ";" : ",";
+
+    const parseValorMonetarioCsv = (valorBruto) => {
+      if (valorBruto == null) return NaN;
+      let v = String(valorBruto).trim();
+      if (!v) return NaN;
+      // remover símbolo de moeda e espaços
+      v = v.replace(/[R$\s]/g, "");
+      const temVirgula = v.includes(",");
+      const temPonto = v.includes(".");
+      if (temVirgula && temPonto) {
+        // Formato típico BR: 1.234,56
+        v = v.replace(/\./g, "").replace(",", ".");
+      } else if (temVirgula && !temPonto) {
+        // Formato BR simples: 1234,56
+        v = v.replace(",", ".");
+      } else {
+        // Apenas ponto (1234.56) ou apenas dígitos - usar direto
+      }
+      const n = parseFloat(v);
+      return isNaN(n) ? NaN : n;
+    };
+
+    // Pré-análise: contar quantas linhas são válidas / inválidas
+    let validas = 0;
+    let invalidas = 0;
+
+    for (let i = 1; i < linhas.length; i++) {
+      const linha = linhas[i];
+      if (!linha) continue;
+      const partes = linha.split(sep).map(p => p.trim());
+      if (partes.length < 3) {
+        invalidas++;
+        continue;
+      }
+      const [data, fatStr, pedidosStr] = partes;
+      if (!data) {
+        invalidas++;
+        continue;
+      }
+      const faturamento = parseValorMonetarioCsv(fatStr);
+      const totalPedidos = parseInt(pedidosStr, 10);
+
+      if (isNaN(faturamento) || isNaN(totalPedidos)) {
+        invalidas++;
+        continue;
+      }
+
+      validas++;
+    }
+
+    if (validas === 0) {
+      if (msg) {
+        msg.textContent = "Nenhum registro válido encontrado no arquivo CSV. Verifique o formato das colunas.";
+        msg.className = "alert alert-danger";
+        msg.classList.remove("d-none");
+      }
+      return;
+    }
+
+    const textoConfirmacao = `Pré-análise do arquivo:\n\n` +
+      `Registros válidos para importação: ${validas}\n` +
+      `Linhas com problema (serão ignoradas): ${invalidas}\n\n` +
+      `Deseja confirmar a importação dos ${validas} registro(s) válidos?`;
+
+    const confirmado = window.confirm(textoConfirmacao);
+    if (!confirmado) {
+      if (msg) {
+        msg.textContent = "Importação cancelada. Nenhum registro foi importado.";
+        msg.className = "alert alert-secondary";
+        msg.classList.remove("d-none");
+      }
+      return;
+    }
+
+    // Importação efetiva
+    let sucesso = 0;
+    let falhas = 0;
+
+    for (let i = 1; i < linhas.length; i++) {
+      const linha = linhas[i];
+      if (!linha) continue;
+      const partes = linha.split(sep).map(p => p.trim());
+      if (partes.length < 3) {
+        falhas++;
+        continue;
+      }
+      const [data, fatStr, pedidosStr] = partes;
+      if (!data) {
+        falhas++;
+        continue;
+      }
+      const faturamento = parseValorMonetarioCsv(fatStr);
+      const totalPedidos = parseInt(pedidosStr, 10);
+
+      if (isNaN(faturamento) || isNaN(totalPedidos)) {
+        falhas++;
+        continue;
+      }
+
+      try {
+        const res = await cadastrarReceita({
+          data,
+          faturamento: faturamento,
+          totalPedidos: totalPedidos,
+        });
+        if (res && res.sucesso) {
+          sucesso++;
+        } else {
+          falhas++;
+        }
+      } catch {
+        falhas++;
+      }
+    }
+
+    // Recarregar receitas e atualizar tabela
+    try {
+      if (typeof carregarReceitas === "function") {
+        if (carregarReceitas.constructor?.name === "AsyncFunction") {
+          await carregarReceitas();
+        } else {
+          carregarReceitas();
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao recarregar receitas após importação:", e);
+    }
+    atualizarTabelaReceitas();
+
+    if (msg) {
+      msg.textContent = `Importação concluída. ${sucesso} linha(s) importada(s) com sucesso, ${falhas} falha(s).`;
+      msg.className = sucesso > 0 && falhas === 0 ? "alert alert-success" : "alert alert-warning";
+      msg.classList.remove("d-none");
+    }
+  } catch (e) {
+    console.error("Erro ao importar receitas CSV:", e);
+    if (msg) {
+      msg.textContent = e?.message || "Erro ao importar arquivo CSV de receitas.";
+      msg.className = "alert alert-danger";
+      msg.classList.remove("d-none");
+    }
+  }
 }
 
 // ========== FUNÇÕES DE PARCEIROS ==========
@@ -2027,10 +2797,17 @@ async function atualizarDashboard(recarregar = true) {
   if (elAtraso) elAtraso.textContent = registrosAtraso.length;
 
   const fechamentosAprovados = (fechamentos || []).filter((f) => f && f.status === "aprovado");
-  const totalFaturamento = fechamentosAprovados.reduce((sum, f) => sum + Number((f && (f.valorTotal ?? f.valor_total)) || 0), 0);
+  const totalFaturamento = fechamentosAprovados.reduce(
+    (sum, f) => sum + Number((f && (f.valorTotal ?? f.valor_total)) || 0),
+    0
+  );
   if (elFatur) elFatur.textContent = formatarMoeda(totalFaturamento);
 
-  const totalReceita = (receitas || []).reduce((sum, r) => sum + Number((r && r.faturamento) || 0), 0);
+  // Considerar apenas receitas do ano de 2026 para o card de Receita no Dashboard
+  const anoReceitaDashboard = 2026;
+  const totalReceita = (receitas || [])
+    .filter((r) => r && r.data && String(r.data).slice(0, 4) === String(anoReceitaDashboard))
+    .reduce((sum, r) => sum + Number((r && r.faturamento) || 0), 0);
   if (elReceita) elReceita.textContent = formatarMoeda(totalReceita);
 
   atualizarResultadoFinanceiro(totalFaturamento, totalReceita);
@@ -2104,10 +2881,33 @@ function atualizarResultadoFinanceiro(custoOperacional, receita) {
 function atualizarComparativoFaturamento() {
   const anoAtual = new Date().getFullYear();
   const anoAnterior = anoAtual - 1;
-  const fatAnoAnt = typeof obterFaturamentoAno === "function" ? obterFaturamentoAno(anoAnterior) : null;
+
+  // Helper local para extrair o ano de uma data (aceita 'YYYY-MM-DD' ou 'DD/MM/YYYY')
+  const obterAno = (valorData) => {
+    if (!valorData) return null;
+    const s = String(valorData).trim();
+    if (!s) return null;
+    const partes = s.split(/[\/\-]/);
+    if (partes.length === 3) {
+      if (partes[0].length === 4) {
+        // YYYY-MM-DD
+        return Number(partes[0]) || null;
+      } else {
+        // DD/MM/YYYY
+        return Number(partes[2]) || null;
+      }
+    }
+    return null;
+  };
+
+  const fatAnoAnt = (receitas || []).reduce((sum, r) => {
+    const ano = obterAno(r?.data);
+    return ano === anoAnterior ? sum + Number(r?.faturamento || 0) : sum;
+  }, 0);
+
   const fatAnoAtual = (receitas || []).reduce((sum, r) => {
-    const ano = String(r?.data || "").substring(0, 4);
-    return ano === String(anoAtual) ? sum + Number(r?.faturamento || 0) : sum;
+    const ano = obterAno(r?.data);
+    return ano === anoAtual ? sum + Number(r?.faturamento || 0) : sum;
   }, 0);
 
   const elAnt = document.getElementById("dashboardFaturamentoAnoAnterior");
@@ -2118,8 +2918,8 @@ function atualizarComparativoFaturamento() {
   const elVarPct = document.getElementById("dashboardVariacaoPercentual");
   const cardVar = document.getElementById("cardVariacaoFaturamento");
 
-  if (elAnt) elAnt.textContent = fatAnoAnt != null ? formatarMoeda(fatAnoAnt) : "—";
-  if (elLabelAnt) elLabelAnt.textContent = fatAnoAnt != null ? String(anoAnterior) : "(cadastre em Resultado Financeiro)";
+  if (elAnt) elAnt.textContent = formatarMoeda(fatAnoAnt || 0);
+  if (elLabelAnt) elLabelAnt.textContent = String(anoAnterior);
   if (elAtual) elAtual.textContent = formatarMoeda(fatAnoAtual);
   if (elLabelAtual) elLabelAtual.textContent = String(anoAtual);
 

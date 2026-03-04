@@ -72,6 +72,20 @@ CREATE INDEX IF NOT EXISTS idx_registros_poupatempo_id ON registros(poupatempo_i
 CREATE INDEX IF NOT EXISTS idx_registros_data_edicao ON registros(data_edicao);
 CREATE INDEX IF NOT EXISTS idx_registros_data_recebimento ON registros(data_recebimento);
 
+-- ========== TABELA DE DESCARTES ==========
+CREATE TABLE IF NOT EXISTS descartes (
+  id TEXT PRIMARY KEY,
+  poupatempo_id TEXT NOT NULL REFERENCES poupatempos(id) ON DELETE CASCADE,
+  data_descarte DATE NOT NULL,
+  quantidade INTEGER NOT NULL DEFAULT 0,
+  motivo TEXT,
+  observacoes TEXT,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_descartes_poupatempo_id ON descartes(poupatempo_id);
+CREATE INDEX IF NOT EXISTS idx_descartes_data ON descartes(data_descarte);
+
 -- ========== TABELA DE INVESTIMENTOS ==========
 CREATE TABLE IF NOT EXISTS investimentos (
   id TEXT PRIMARY KEY,

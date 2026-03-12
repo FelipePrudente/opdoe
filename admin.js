@@ -2288,9 +2288,21 @@ async function importarReceitasCsv(arquivo) {
 }
 
 // ========== FUNÇÕES DE PARCEIROS ==========
-function atualizarTabelaParceiros() {
+async function atualizarTabelaParceiros() {
   const tbody = document.querySelector("#tabelaParceiros tbody");
   if (!tbody) return;
+
+  // Em modo Supabase, garantir que a lista esteja sempre atualizada com o banco
+  try {
+    const carregarAsync = typeof carregarParceiros === "function" && carregarParceiros.constructor.name === "AsyncFunction";
+    if (carregarAsync) {
+      await carregarParceiros();
+    } else if (typeof carregarParceiros === "function") {
+      carregarParceiros();
+    }
+  } catch (e) {
+    console.error("Erro ao recarregar parceiros:", e);
+  }
   
   if (!parceiros.length) {
     tbody.innerHTML = "";

@@ -433,9 +433,29 @@ window.irParaPaginaParceiro = function(idControles, novaPagina, totalPaginas) {
   }
 };
 
-function atualizarTabelaServicosParceiro() {
+async function atualizarTabelaServicosParceiro() {
   const tbody = document.querySelector("#tabelaServicosParceiro tbody");
   if (!tbody) return;
+
+  // Se estivermos usando Supabase (funções assíncronas), recarregar sempre do banco
+  try {
+    const carregarAsync = typeof carregarServicosParceiros === "function" && carregarServicosParceiros.constructor.name === "AsyncFunction";
+    if (carregarAsync) {
+      await carregarServicosParceiros();
+    } else if (typeof carregarServicosParceiros === "function") {
+      carregarServicosParceiros();
+    }
+
+    // Também recarregar fechamentos para que o status exibido seja consistente com o admin
+    const carregarFechAsync = typeof carregarFechamentos === "function" && carregarFechamentos.constructor.name === "AsyncFunction";
+    if (carregarFechAsync) {
+      await carregarFechamentos();
+    } else if (typeof carregarFechamentos === "function") {
+      carregarFechamentos();
+    }
+  } catch (e) {
+    console.error("Erro ao recarregar serviços/fechamentos de parceiros:", e);
+  }
 
   const parcId = usuarioLogado.parceiroId ?? usuarioLogado.parceiro_id;
   let servicos = obterServicosPorParceiro(parcId);
@@ -468,8 +488,23 @@ function atualizarTabelaServicosParceiro() {
   } else {
     const listaOrdenada = [...servicos].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
     const renderizarLinha = (servico) => {
-      const fechAprov = servico.fechamentoAprovado ?? servico.fechamento_aprovado;
-      const fechPend = servico.fechamentoPendente ?? servico.fechamento_pendente;
+      // Determinar status a partir dos fechamentos, para ficar igual à visão do administrador
+      const todosFechamentos = (typeof fechamentos !== "undefined" ? fechamentos : []);
+      const fechamentoRelacionado = todosFechamentos.find((f) => {
+        const ids = f.servicosIds ?? f.servicos_ids ?? [];
+        return Array.isArray(ids) && ids.includes(servico.id);
+      });
+
+      let fechAprov = false;
+      let fechPend = false;
+      if (fechamentoRelacionado) {
+        if (fechamentoRelacionado.status === "aprovado") {
+          fechAprov = true;
+        } else if (fechamentoRelacionado.status === "pendente") {
+          fechPend = true;
+        }
+      }
+
       const servPrest = servico.servicoPrestado ?? servico.servico_prestado;
       const qtdPag = servico.quantidadePaginas ?? servico.quantidade_paginas;
       const valNota = servico.valorNota ?? servico.valor_nota;

@@ -814,8 +814,12 @@ async function carregarServicosParceiros() {
     }
     const { data, error } = await supabase
       .from("servicos_parceiros")
-      .select("*")
-      .order("criado_em", { ascending: false });
+      // Seleciona apenas os campos necessários para a listagem,
+      // evitando trafegar o PDF em massa e reduzindo o tempo de resposta
+      .select("id, parceiro_id, data, servico_prestado, quantidade, quantidade_paginas, valor_nota, observacao, fechamento_pendente, fechamento_aprovado, fechamento_id, criado_em")
+      .order("criado_em", { ascending: false })
+      // Limita a quantidade inicial de registros para diminuir risco de timeout
+      .range(0, 499); // primeiros 500 registros
 
     if (error) {
       console.error("Erro ao carregar serviços de parceiros:", error);

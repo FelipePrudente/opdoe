@@ -671,6 +671,17 @@ async function excluirFaturamentoAnual(id) {
 }
 
 // ========== GERENCIAMENTO DE PARCEIROS ==========
+/** PostgREST devolve colunas em snake_case; a UI legada espera também camelCase. */
+function mapParceiroFromSupabase(row) {
+  if (!row) return row;
+  return {
+    ...row,
+    servicosContratados: row.servicosContratados ?? row.servicos_contratados ?? "",
+    responsavelNome: row.responsavelNome ?? row.responsavel_nome ?? "",
+    responsavelEmail: row.responsavelEmail ?? row.responsavel_email ?? "",
+  };
+}
+
 async function carregarParceiros() {
   try {
     const supabase = getSupabaseClient();
@@ -690,7 +701,7 @@ async function carregarParceiros() {
       return;
     }
 
-    parceiros = data || [];
+    parceiros = (data || []).map(mapParceiroFromSupabase);
   } catch (error) {
     console.error("Erro ao carregar parceiros:", error);
     parceiros = [];
@@ -736,7 +747,7 @@ async function cadastrarParceiro(dados) {
   }
 
   if (data && data.length > 0) {
-    parceiros.push(data[0]);
+    parceiros.push(mapParceiroFromSupabase(data[0]));
     
     // Criar usuário parceiro
     await criarUsuarioParceiro(data[0].id, dados.responsavelNome, dados.responsavelEmail, dados.responsavelSenha);
@@ -778,7 +789,7 @@ async function atualizarParceiro(id, dados) {
   if (data && data.length > 0) {
     const index = parceiros.findIndex((p) => p.id === id);
     if (index !== -1) {
-      parceiros[index] = data[0];
+      parceiros[index] = mapParceiroFromSupabase(data[0]);
     }
     return { sucesso: true, mensagem: "Parceiro atualizado com sucesso!" };
   }

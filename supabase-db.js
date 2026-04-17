@@ -682,6 +682,19 @@ function mapParceiroFromSupabase(row) {
   };
 }
 
+/** Senha nova preenchida no formulário (trim; vazio = manter a atual no banco). */
+function senhaParceiroInformada(dados) {
+  return dados.responsavelSenha != null && String(dados.responsavelSenha).trim() !== "";
+}
+
+function montarPatchUsuarioParceiro(nomeLimpo, emailNormalizado, senha) {
+  const patch = { nome: nomeLimpo, email: emailNormalizado };
+  if (senha != null && String(senha).length > 0) {
+    patch.senha = String(senha);
+  }
+  return patch;
+}
+
 async function carregarParceiros() {
   try {
     const supabase = getSupabaseClient();
@@ -762,6 +775,21 @@ async function atualizarParceiro(id, dados) {
   const supabase = getSupabaseClient();
   if (!supabase) return { sucesso: false, mensagem: "Supabase não inicializado" };
 
+  const antes = (parceiros || []).find((p) => p.id === id);
+  const rollbackParceiro = antes
+    ? {
+        nome: antes.nome,
+        cep: antes.cep ?? null,
+        endereco: antes.endereco,
+        servicos_contratados: antes.servicos_contratados ?? antes.servicosContratados,
+        responsavel_nome: antes.responsavel_nome ?? antes.responsavelNome,
+        responsavel_email: String(antes.responsavel_email ?? antes.responsavelEmail ?? "")
+          .toLowerCase()
+          .trim(),
+        responsavel_senha: antes.responsavel_senha ?? antes.responsavelSenha,
+      }
+    : null;
+
   const atualizacao = {
     nome: dados.nome.trim(),
     cep: dados.cep?.trim() || null,
@@ -771,8 +799,8 @@ async function atualizarParceiro(id, dados) {
     responsavel_email: dados.responsavelEmail.toLowerCase().trim(),
   };
 
-  if (dados.responsavelSenha) {
-    atualizacao.responsavel_senha = dados.responsavelSenha;
+  if (senhaParceiroInformada(dados)) {
+    atualizacao.responsavel_senha = String(dados.responsavelSenha).trim();
   }
 
   const { data, error } = await supabase
@@ -792,12 +820,28 @@ async function atualizarParceiro(id, dados) {
     if (index !== -1) {
       parceiros[index] = mapParceiroFromSupabase(row);
     }
-    // Login do parceiro usa a tabela usuarios; manter igual a parceiros (e-mail / senha do responsável)
-    const senhaParaLogin =
-      dados.responsavelSenha && String(dados.responsavelSenha).trim()
-        ? dados.responsavelSenha
-        : row.responsavel_senha;
-    await criarUsuarioParceiro(id, dados.responsavelNome, dados.responsavelEmail, senhaParaLogin);
+    // Login usa tabela usuarios — precisa refletir e-mail/senha do responsável
+    const novaSenha = senhaParceiroInformada(dados);
+    const senhaParaLogin = novaSenha
+      ? String(dados.responsavelSenha).trim()
+      : (row.responsavel_senha ?? "");
+
+    const syncUser = await criarUsuarioParceiro(id, dados.responsavelNome, dados.responsavelEmail, senhaParaLogin);
+
+    if (!syncUser) {
+      if (rollbackParceiro) {
+        const { error: errRb } = await supabase.from("parceiros").update(rollbackParceiro).eq("id", id).select();
+        if (errRb) console.error("Erro ao reverter parceiro após falha de sincronização:", errRb);
+        await carregarParceiros();
+      }
+      return {
+        sucesso: false,
+        mensagem:
+          "Não foi possível atualizar o login do parceiro na tabela de usuários. " +
+          "O e-mail informado pode já estar em uso por outro cadastro. " +
+          "Os dados do parceiro foram restaurados para o estado anterior.",
+      };
+    }
 
     return { sucesso: true, mensagem: "Parceiro atualizado com sucesso!" };
   }
@@ -1501,6 +1545,7 @@ async function criarUsuarioParceiro(parceiroId, nome, email, senha) {
 
   const emailNormalizado = String(email || "").toLowerCase().trim();
   const nomeLimpo = String(nome || "").trim();
+  const patchBase = montarPatchUsuarioParceiro(nomeLimpo, emailNormalizado, senha);
 
   const aplicarUsuarioNaLista = (registro) => {
     if (!registro) return;
@@ -1514,17 +1559,14 @@ async function criarUsuarioParceiro(parceiroId, nome, email, senha) {
     .from("usuarios")
     .select("*")
     .eq("parceiro_id", parceiroId)
-    .eq("tipo", "parceiro");
+    .eq("tipo", "parceiro")
+    .limit(5);
 
   if (!errPorParc && porParceiro && porParceiro.length > 0) {
     const atual = porParceiro[0];
     const { data, error } = await supabase
       .from("usuarios")
-      .update({
-        nome: nomeLimpo,
-        email: emailNormalizado,
-        senha: senha,
-      })
+      .update(patchBase)
       .eq("id", atual.id)
       .select();
 
@@ -1539,7 +1581,7 @@ async function criarUsuarioParceiro(parceiroId, nome, email, senha) {
     return null;
   }
 
-  // 2) E-mail já existe em usuarios — reaproveita / vincula ao parceiro (exceto admin/funcionário)
+  // 2) E-mail já existe em usuarios — só reaproveita se for o mesmo parceiro ou cadastro órfão do mesmo fluxo
   const { data: usuarioExistente, error: erroBusca } = await supabase
     .from("usuarios")
     .select("*")
@@ -1551,15 +1593,20 @@ async function criarUsuarioParceiro(parceiroId, nome, email, senha) {
       console.error("E-mail já em uso por usuário do tipo", usuarioExistente.tipo);
       return null;
     }
+    const pidExistente = usuarioExistente.parceiro_id ?? usuarioExistente.parceiroId;
+    if (usuarioExistente.tipo === "parceiro" && pidExistente && pidExistente !== parceiroId) {
+      console.error("E-mail já vinculado a outro parceiro (parceiro_id diferente).");
+      return null;
+    }
+    const mergePatch = {
+      ...patchBase,
+      tipo: "parceiro",
+      parceiro_id: parceiroId,
+      email: emailNormalizado,
+    };
     const { data, error } = await supabase
       .from("usuarios")
-      .update({
-        tipo: "parceiro",
-        parceiro_id: parceiroId,
-        nome: nomeLimpo,
-        senha: senha,
-        email: emailNormalizado,
-      })
+      .update(mergePatch)
       .eq("id", usuarioExistente.id)
       .select();
 
@@ -1574,12 +1621,17 @@ async function criarUsuarioParceiro(parceiroId, nome, email, senha) {
     return null;
   }
 
-  // 3) Novo cadastro
+  // 3) Novo cadastro (senha obrigatória)
+  if (patchBase.senha == null || String(patchBase.senha).length === 0) {
+    console.error("criarUsuarioParceiro: senha ausente para novo usuário de parceiro.");
+    return null;
+  }
+
   const novoUsuario = {
     id: `parc-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     tipo: "parceiro",
     email: emailNormalizado,
-    senha: senha,
+    senha: patchBase.senha,
     nome: nomeLimpo,
     parceiro_id: parceiroId,
     criado_em: new Date().toISOString(),

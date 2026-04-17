@@ -787,10 +787,18 @@ async function atualizarParceiro(id, dados) {
   }
 
   if (data && data.length > 0) {
+    const row = data[0];
     const index = parceiros.findIndex((p) => p.id === id);
     if (index !== -1) {
-      parceiros[index] = mapParceiroFromSupabase(data[0]);
+      parceiros[index] = mapParceiroFromSupabase(row);
     }
+    // Login do parceiro usa a tabela usuarios; manter igual a parceiros (e-mail / senha do responsável)
+    const senhaParaLogin =
+      dados.responsavelSenha && String(dados.responsavelSenha).trim()
+        ? dados.responsavelSenha
+        : row.responsavel_senha;
+    await criarUsuarioParceiro(id, dados.responsavelNome, dados.responsavelEmail, senhaParaLogin);
+
     return { sucesso: true, mensagem: "Parceiro atualizado com sucesso!" };
   }
 
@@ -1491,12 +1499,88 @@ async function criarUsuarioParceiro(parceiroId, nome, email, senha) {
   const supabase = getSupabaseClient();
   if (!supabase) return null;
 
+  const emailNormalizado = String(email || "").toLowerCase().trim();
+  const nomeLimpo = String(nome || "").trim();
+
+  const aplicarUsuarioNaLista = (registro) => {
+    if (!registro) return;
+    const idx = usuarios.findIndex((u) => u.id === registro.id);
+    if (idx !== -1) usuarios[idx] = registro;
+    else usuarios.push(registro);
+  };
+
+  // 1) Já existe login de parceiro vinculado a este parceiro (atualiza e-mail / nome / senha)
+  const { data: porParceiro, error: errPorParc } = await supabase
+    .from("usuarios")
+    .select("*")
+    .eq("parceiro_id", parceiroId)
+    .eq("tipo", "parceiro");
+
+  if (!errPorParc && porParceiro && porParceiro.length > 0) {
+    const atual = porParceiro[0];
+    const { data, error } = await supabase
+      .from("usuarios")
+      .update({
+        nome: nomeLimpo,
+        email: emailNormalizado,
+        senha: senha,
+      })
+      .eq("id", atual.id)
+      .select();
+
+    if (error) {
+      console.error("Erro ao atualizar usuário parceiro (por parceiro_id):", error);
+      return null;
+    }
+    if (data && data[0]) {
+      aplicarUsuarioNaLista(data[0]);
+      return data[0];
+    }
+    return null;
+  }
+
+  // 2) E-mail já existe em usuarios — reaproveita / vincula ao parceiro (exceto admin/funcionário)
+  const { data: usuarioExistente, error: erroBusca } = await supabase
+    .from("usuarios")
+    .select("*")
+    .eq("email", emailNormalizado)
+    .maybeSingle();
+
+  if (usuarioExistente && !erroBusca) {
+    if (usuarioExistente.tipo === "admin" || usuarioExistente.tipo === "funcionario") {
+      console.error("E-mail já em uso por usuário do tipo", usuarioExistente.tipo);
+      return null;
+    }
+    const { data, error } = await supabase
+      .from("usuarios")
+      .update({
+        tipo: "parceiro",
+        parceiro_id: parceiroId,
+        nome: nomeLimpo,
+        senha: senha,
+        email: emailNormalizado,
+      })
+      .eq("id", usuarioExistente.id)
+      .select();
+
+    if (error) {
+      console.error("Erro ao atualizar usuário parceiro (por e-mail):", error);
+      return null;
+    }
+    if (data && data[0]) {
+      aplicarUsuarioNaLista(data[0]);
+      return data[0];
+    }
+    return null;
+  }
+
+  // 3) Novo cadastro
   const novoUsuario = {
     id: `parc-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     tipo: "parceiro",
-    email: email.toLowerCase().trim(),
+    email: emailNormalizado,
     senha: senha,
-    nome: nome.trim(),
+    nome: nomeLimpo,
     parceiro_id: parceiroId,
     criado_em: new Date().toISOString(),
   };
@@ -1512,7 +1596,7 @@ async function criarUsuarioParceiro(parceiroId, nome, email, senha) {
   }
 
   if (data && data.length > 0) {
-    usuarios.push(data[0]);
+    aplicarUsuarioNaLista(data[0]);
     return data[0];
   }
 

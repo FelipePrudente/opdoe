@@ -981,8 +981,12 @@ function fazerLogin(tipo, email, senha) {
     if (!email) {
       return { sucesso: false, mensagem: "Informe o e-mail." };
     }
+    const emailNorm = String(email).trim().toLowerCase();
     const usuario = usuarios.find(
-      (u) => u.tipo === "funcionario" && u.email === email.toLowerCase() && u.senha === senha
+      (u) =>
+        u.tipo === "funcionario" &&
+        String(u.email || "").trim().toLowerCase() === emailNorm &&
+        u.senha === senha
     );
     if (!usuario) {
       return { sucesso: false, mensagem: "E-mail ou senha incorretos." };
@@ -994,8 +998,12 @@ function fazerLogin(tipo, email, senha) {
     if (!email) {
       return { sucesso: false, mensagem: "Informe o e-mail." };
     }
+    const emailNorm = String(email).trim().toLowerCase();
     const usuario = usuarios.find(
-      (u) => u.tipo === "parceiro" && u.email === email.toLowerCase() && u.senha === senha
+      (u) =>
+        u.tipo === "parceiro" &&
+        String(u.email || "").trim().toLowerCase() === emailNorm &&
+        u.senha === senha
     );
     if (!usuario) {
       return { sucesso: false, mensagem: "E-mail ou senha incorretos." };

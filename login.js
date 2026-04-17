@@ -12,8 +12,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("emailLogin").required = precisaEmail;
   });
 
-  // Processar login
-  formLogin.addEventListener("submit", (e) => {
+  // Processar login (aguarda Supabase/localStorage carregar usuários antes de validar)
+  formLogin.addEventListener("submit", async (e) => {
     e.preventDefault();
     mensagemLogin.classList.add("d-none");
 
@@ -37,6 +37,13 @@ document.addEventListener("DOMContentLoaded", () => {
       mensagemLogin.textContent = "Informe o e-mail.";
       mensagemLogin.classList.remove("d-none");
       return;
+    }
+
+    if (!window.dadosInicializados) {
+      await new Promise((resolve) => {
+        if (window.dadosInicializados) resolve();
+        else window.addEventListener("dadosInicializados", () => resolve(), { once: true });
+      });
     }
 
     const resultado = fazerLogin(tipo, email, senha);

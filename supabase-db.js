@@ -215,24 +215,73 @@ async function atualizarPoupatempo(id, dados) {
   const supabase = getSupabaseClient();
   if (!supabase) return { sucesso: false, mensagem: "Supabase não inicializado" };
 
+  const gerenteEmail = dados.gerenteEmail.toLowerCase().trim();
+  const coordenadorEmail = dados.coordenadorEmail.toLowerCase().trim();
+
+  if (gerenteEmail === coordenadorEmail) {
+    return { sucesso: false, mensagem: "O e-mail do gerente e do coordenador devem ser diferentes." };
+  }
+
+  const existeNome = poupatempos.some(
+    (p) => p.id !== id && String(p.nome || "").toLowerCase() === dados.nome.toLowerCase()
+  );
+  if (existeNome) {
+    return { sucesso: false, mensagem: "Já existe outro Poupatempo com este nome." };
+  }
+
+  const emailUsadoEmOutro = (email) =>
+    poupatempos.some((p) => {
+      if (p.id === id) return false;
+      const g = String(p.gerente_email ?? p.gerenteEmail ?? "").toLowerCase().trim();
+      const c = String(p.coordenador_email ?? p.coordenadorEmail ?? "").toLowerCase().trim();
+      return g === email || c === email;
+    });
+
+  if (emailUsadoEmOutro(gerenteEmail)) {
+    return { sucesso: false, mensagem: "O e-mail do gerente já está cadastrado em outro Poupatempo." };
+  }
+  if (emailUsadoEmOutro(coordenadorEmail)) {
+    return { sucesso: false, mensagem: "O e-mail do coordenador já está cadastrado em outro Poupatempo." };
+  }
+
+  const antes = (poupatempos || []).find((p) => p.id === id);
+  const rollbackPoupatempo = antes
+    ? {
+        nome: antes.nome,
+        cep: antes.cep ?? null,
+        endereco: antes.endereco,
+        telefone: antes.telefone ?? null,
+        gerente_nome: antes.gerente_nome ?? antes.gerenteNome,
+        gerente_email: String(antes.gerente_email ?? antes.gerenteEmail ?? "")
+          .toLowerCase()
+          .trim(),
+        gerente_senha: antes.gerente_senha ?? antes.gerenteSenha,
+        coordenador_nome: antes.coordenador_nome ?? antes.coordenadorNome,
+        coordenador_email: String(antes.coordenador_email ?? antes.coordenadorEmail ?? "")
+          .toLowerCase()
+          .trim(),
+        coordenador_senha: antes.coordenador_senha ?? antes.coordenadorSenha,
+        quantidade_esperada: antes.quantidade_esperada ?? antes.quantidadeEsperada,
+      }
+    : null;
+
   const atualizacao = {
     nome: dados.nome.trim(),
     cep: dados.cep?.trim() || null,
     endereco: dados.endereco.trim(),
     telefone: dados.telefone?.trim() || null,
     gerente_nome: dados.gerenteNome.trim(),
-    gerente_email: dados.gerenteEmail.toLowerCase().trim(),
+    gerente_email: gerenteEmail,
     coordenador_nome: dados.coordenadorNome.trim(),
-    coordenador_email: dados.coordenadorEmail.toLowerCase().trim(),
+    coordenador_email: coordenadorEmail,
     quantidade_esperada: Number(dados.quantidadeEsperada),
   };
 
-  // Atualizar senhas apenas se fornecidas
-  if (dados.gerenteSenha) {
-    atualizacao.gerente_senha = dados.gerenteSenha;
+  if (senhaFuncionarioInformada(dados.gerenteSenha)) {
+    atualizacao.gerente_senha = String(dados.gerenteSenha).trim();
   }
-  if (dados.coordenadorSenha) {
-    atualizacao.coordenador_senha = dados.coordenadorSenha;
+  if (senhaFuncionarioInformada(dados.coordenadorSenha)) {
+    atualizacao.coordenador_senha = String(dados.coordenadorSenha).trim();
   }
 
   const { data, error } = await supabase
@@ -247,10 +296,46 @@ async function atualizarPoupatempo(id, dados) {
   }
 
   if (data && data.length > 0) {
+    const row = data[0];
     const index = poupatempos.findIndex((p) => p.id === id);
     if (index !== -1) {
-      poupatempos[index] = data[0];
+      poupatempos[index] = row;
     }
+
+    const syncUser = await sincronizarUsuariosResponsaveisPoupatempo(id, dados, row, rollbackPoupatempo);
+
+    if (!syncUser.sucesso) {
+      if (rollbackPoupatempo) {
+        const { error: errRb } = await supabase.from("poupatempos").update(rollbackPoupatempo).eq("id", id).select();
+        if (errRb) console.error("Erro ao reverter poupatempo após falha de sincronização:", errRb);
+        await criarUsuarioFuncionario(
+          id,
+          rollbackPoupatempo.gerente_nome,
+          rollbackPoupatempo.gerente_email,
+          rollbackPoupatempo.gerente_senha,
+          "gerente",
+          gerenteEmail
+        );
+        await criarUsuarioFuncionario(
+          id,
+          rollbackPoupatempo.coordenador_nome,
+          rollbackPoupatempo.coordenador_email,
+          rollbackPoupatempo.coordenador_senha,
+          "coordenador",
+          coordenadorEmail
+        );
+        await carregarPoupatempos();
+      }
+      return {
+        sucesso: false,
+        mensagem:
+          syncUser.mensagem ||
+          "Não foi possível atualizar o login dos responsáveis na tabela de usuários. " +
+            "O e-mail informado pode já estar em uso por outro cadastro. " +
+            "Os dados do Poupatempo foram restaurados para o estado anterior.",
+      };
+    }
+
     return { sucesso: true, mensagem: "Poupatempo atualizado com sucesso!" };
   }
 
@@ -1439,61 +1524,215 @@ async function confirmarNaoRecebimento(poupatempoId, dataEdicao, observacoes = "
 }
 
 // ========== FUNÇÕES AUXILIARES PARA CRIAÇÃO DE USUÁRIOS ==========
-async function criarUsuarioFuncionario(poupatempoId, nome, email, senha, cargo) {
+function senhaFuncionarioInformada(senha) {
+  return senha != null && String(senha).trim() !== "";
+}
+
+function montarPatchUsuarioFuncionario(nomeLimpo, emailNormalizado, senha, cargo, poupatempoId) {
+  const patch = {
+    nome: nomeLimpo,
+    email: emailNormalizado,
+    cargo: cargo,
+    poupatempo_id: poupatempoId,
+    tipo: "funcionario",
+  };
+  if (senhaFuncionarioInformada(senha)) {
+    patch.senha = String(senha).trim();
+  }
+  return patch;
+}
+
+function aplicarUsuarioNaLista(registro) {
+  if (!registro || typeof usuarios === "undefined" || !Array.isArray(usuarios)) return;
+  const idx = usuarios.findIndex((u) => u.id === registro.id);
+  if (idx !== -1) usuarios[idx] = registro;
+  else usuarios.push(registro);
+}
+
+async function sincronizarUsuariosResponsaveisPoupatempo(id, dados, row, rollbackPoupatempo) {
+  const gerenteEmail = dados.gerenteEmail.toLowerCase().trim();
+  const coordenadorEmail = dados.coordenadorEmail.toLowerCase().trim();
+  const senhaGerente = senhaFuncionarioInformada(dados.gerenteSenha)
+    ? String(dados.gerenteSenha).trim()
+    : (row.gerente_senha ?? rollbackPoupatempo?.gerente_senha ?? "");
+  const senhaCoordenador = senhaFuncionarioInformada(dados.coordenadorSenha)
+    ? String(dados.coordenadorSenha).trim()
+    : (row.coordenador_senha ?? rollbackPoupatempo?.coordenador_senha ?? "");
+
+  const emailAnteriorGerente = String(rollbackPoupatempo?.gerente_email ?? "").toLowerCase().trim();
+  const emailAnteriorCoordenador = String(rollbackPoupatempo?.coordenador_email ?? "").toLowerCase().trim();
+  const houveTroca =
+    !!emailAnteriorGerente &&
+    !!emailAnteriorCoordenador &&
+    gerenteEmail === emailAnteriorCoordenador &&
+    coordenadorEmail === emailAnteriorGerente &&
+    gerenteEmail !== emailAnteriorGerente;
+
+  const mensagemFalha =
+    "Não foi possível atualizar o login dos responsáveis na tabela de usuários. " +
+    "O e-mail informado pode já estar em uso por outro cadastro.";
+
+  const syncGerente = (email, emailAnterior) =>
+    criarUsuarioFuncionario(id, dados.gerenteNome, email, senhaGerente, "gerente", emailAnterior);
+  const syncCoordenador = (email, emailAnterior) =>
+    criarUsuarioFuncionario(id, dados.coordenadorNome, email, senhaCoordenador, "coordenador", emailAnterior);
+
+  if (houveTroca) {
+    const emailTemp = `tmp-swap-${id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@tmp.local`;
+    if (!(await syncGerente(emailTemp, emailAnteriorGerente))) {
+      return { sucesso: false, mensagem: mensagemFalha };
+    }
+    if (!(await syncCoordenador(coordenadorEmail, emailAnteriorCoordenador))) {
+      return { sucesso: false, mensagem: mensagemFalha };
+    }
+    if (!(await syncGerente(gerenteEmail, emailTemp))) {
+      return { sucesso: false, mensagem: mensagemFalha };
+    }
+    return { sucesso: true };
+  }
+
+  const gerentePegaEmailDoCoordenador =
+    !!emailAnteriorCoordenador && gerenteEmail === emailAnteriorCoordenador && gerenteEmail !== emailAnteriorGerente;
+
+  if (gerentePegaEmailDoCoordenador) {
+    if (!(await syncCoordenador(coordenadorEmail, emailAnteriorCoordenador))) {
+      return { sucesso: false, mensagem: mensagemFalha };
+    }
+    if (!(await syncGerente(gerenteEmail, emailAnteriorGerente))) {
+      return { sucesso: false, mensagem: mensagemFalha };
+    }
+    return { sucesso: true };
+  }
+
+  if (!(await syncGerente(gerenteEmail, emailAnteriorGerente))) {
+    return { sucesso: false, mensagem: mensagemFalha };
+  }
+  if (!(await syncCoordenador(coordenadorEmail, emailAnteriorCoordenador))) {
+    return { sucesso: false, mensagem: mensagemFalha };
+  }
+  return { sucesso: true };
+}
+
+async function criarUsuarioFuncionario(poupatempoId, nome, email, senha, cargo, emailAnterior) {
   const supabase = getSupabaseClient();
   if (!supabase) return null;
 
-  const emailNormalizado = email.toLowerCase().trim();
-  
-  // Verificar se o usuário já existe pelo email
+  const emailNormalizado = String(email || "").toLowerCase().trim();
+  const nomeLimpo = String(nome || "").trim();
+  const cargoLimpo = String(cargo || "").trim();
+  const emailAnteriorNormalizado = String(emailAnterior || "").toLowerCase().trim();
+  const patchBase = montarPatchUsuarioFuncionario(nomeLimpo, emailNormalizado, senha, cargoLimpo, poupatempoId);
+
+  const atualizarPorId = async (idUsuario) => {
+    const { data, error } = await supabase
+      .from("usuarios")
+      .update(patchBase)
+      .eq("id", idUsuario)
+      .select();
+    if (error) {
+      console.error(`Erro ao atualizar usuário funcionário (${cargoLimpo}):`, error);
+      return null;
+    }
+    if (data && data[0]) {
+      aplicarUsuarioNaLista(data[0]);
+      return data[0];
+    }
+    return null;
+  };
+
+  const emailEmUsoPorOutro = async (idIgnorar) => {
+    const { data, error } = await supabase
+      .from("usuarios")
+      .select("id, tipo, poupatempo_id, cargo, email")
+      .eq("email", emailNormalizado)
+      .maybeSingle();
+    if (error || !data) return null;
+    if (idIgnorar && data.id === idIgnorar) return null;
+    return data;
+  };
+
+  // 1) Já existe login de funcionário deste cargo neste Poupatempo
+  const { data: porCargo, error: errPorCargo } = await supabase
+    .from("usuarios")
+    .select("*")
+    .eq("poupatempo_id", poupatempoId)
+    .eq("tipo", "funcionario")
+    .eq("cargo", cargoLimpo)
+    .limit(5);
+
+  if (!errPorCargo && porCargo && porCargo.length > 0) {
+    const atual = porCargo[0];
+    if (atual.email !== emailNormalizado) {
+      const conflito = await emailEmUsoPorOutro(atual.id);
+      if (conflito) {
+        console.error("E-mail já em uso por outro usuário:", conflito);
+        return null;
+      }
+    }
+    return atualizarPorId(atual.id);
+  }
+
+  // 1b) Cadastro antigo sem cargo, ou e-mail anterior ainda vinculado a este Poupatempo
+  if (emailAnteriorNormalizado) {
+    const { data: porEmailAntigo, error: errEmailAntigo } = await supabase
+      .from("usuarios")
+      .select("*")
+      .eq("poupatempo_id", poupatempoId)
+      .eq("tipo", "funcionario")
+      .eq("email", emailAnteriorNormalizado)
+      .maybeSingle();
+
+    if (!errEmailAntigo && porEmailAntigo) {
+      if (porEmailAntigo.email !== emailNormalizado) {
+        const conflito = await emailEmUsoPorOutro(porEmailAntigo.id);
+        if (conflito) {
+          console.error("E-mail já em uso por outro usuário:", conflito);
+          return null;
+        }
+      }
+      return atualizarPorId(porEmailAntigo.id);
+    }
+  }
+
+  // 2) E-mail já existe em usuarios — só reaproveita se for o mesmo Poupatempo ou cadastro órfão
   const { data: usuarioExistente, error: erroBusca } = await supabase
     .from("usuarios")
     .select("*")
     .eq("email", emailNormalizado)
-    .single();
+    .maybeSingle();
 
-  // Se o usuário já existe, atualizar ao invés de criar
   if (usuarioExistente && !erroBusca) {
-    const atualizacao = {
-      nome: nome.trim(),
-      senha: senha,
-      poupatempo_id: poupatempoId,
-      cargo: cargo,
-    };
-
-    const { data, error } = await supabase
-      .from("usuarios")
-      .update(atualizacao)
-      .eq("id", usuarioExistente.id)
-      .select();
-
-    if (error) {
-      console.error(`Erro ao atualizar usuário funcionário (${cargo}):`, error);
+    if (usuarioExistente.tipo === "admin" || usuarioExistente.tipo === "parceiro") {
+      console.error("E-mail já em uso por usuário do tipo", usuarioExistente.tipo);
       return null;
     }
-
-    if (data && data.length > 0) {
-      // Atualizar no array local
-      const index = usuarios.findIndex((u) => u.id === usuarioExistente.id);
-      if (index !== -1) {
-        usuarios[index] = data[0];
-      } else {
-        usuarios.push(data[0]);
-      }
-      return data[0];
+    const pidExistente = usuarioExistente.poupatempo_id ?? usuarioExistente.poupatempoId;
+    if (usuarioExistente.tipo === "funcionario" && pidExistente && pidExistente !== poupatempoId) {
+      console.error("E-mail já vinculado a outro Poupatempo.");
+      return null;
     }
+    const cargoExistente = usuarioExistente.cargo;
+    if (cargoExistente && cargoExistente !== cargoLimpo && pidExistente === poupatempoId) {
+      console.error("E-mail já vinculado ao outro responsável deste Poupatempo.");
+      return null;
+    }
+    return atualizarPorId(usuarioExistente.id);
+  }
+
+  // 3) Novo cadastro (senha obrigatória)
+  if (!senhaFuncionarioInformada(patchBase.senha) && !senhaFuncionarioInformada(senha)) {
+    console.error("criarUsuarioFuncionario: senha ausente para novo usuário funcionário.");
     return null;
   }
 
-  // Criar novo usuário se não existir
   const novoUsuario = {
     id: `func-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     tipo: "funcionario",
     email: emailNormalizado,
-    senha: senha,
-    nome: nome.trim(),
+    senha: String(patchBase.senha || senha).trim(),
+    nome: nomeLimpo,
     poupatempo_id: poupatempoId,
-    cargo: cargo,
+    cargo: cargoLimpo,
     criado_em: new Date().toISOString(),
   };
 
@@ -1503,36 +1742,12 @@ async function criarUsuarioFuncionario(poupatempoId, nome, email, senha, cargo) 
     .select();
 
   if (error) {
-    // Se o erro for de duplicação, tentar atualizar
-    if (error.code === '23505') {
-      console.log(`Usuário com email ${emailNormalizado} já existe, tentando atualizar...`);
-      const { data: usuarioAtualizado, error: erroAtualizacao } = await supabase
-        .from("usuarios")
-        .update({
-          nome: nome.trim(),
-          senha: senha,
-          poupatempo_id: poupatempoId,
-          cargo: cargo,
-        })
-        .eq("email", emailNormalizado)
-        .select();
-
-      if (!erroAtualizacao && usuarioAtualizado && usuarioAtualizado.length > 0) {
-        const index = usuarios.findIndex((u) => u.email === emailNormalizado);
-        if (index !== -1) {
-          usuarios[index] = usuarioAtualizado[0];
-        } else {
-          usuarios.push(usuarioAtualizado[0]);
-        }
-        return usuarioAtualizado[0];
-      }
-    }
-    console.error(`Erro ao criar usuário funcionário (${cargo}):`, error);
+    console.error(`Erro ao criar usuário funcionário (${cargoLimpo}):`, error);
     return null;
   }
 
   if (data && data.length > 0) {
-    usuarios.push(data[0]);
+    aplicarUsuarioNaLista(data[0]);
     return data[0];
   }
 
